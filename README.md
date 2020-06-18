@@ -1,0 +1,2 @@
+# MinorC
+Segundo proyecto
