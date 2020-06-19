@@ -1,0 +1,17 @@
+int f2(int a)
+{
+	return a * a;
+}
+
+int f1(int a)
+{
+	return f2(a);
+}
+
+int main()
+{
+	int a = 5;
+	a=f1(a);
+	printf("%d",a);
+}
+

@@ -1,0 +1,30 @@
+struct nodo
+{
+	int valor;
+	struct nodo *siguiente;
+};
+
+int agregar(struct nodo **temp, int valor)
+{
+	struct nodo* nuevo = (struct nodo*)malloc(sizeof(struct nodo));
+	nuevo->valor = valor;
+	nuevo->siguiente = (*temp);
+	(*temp) = nuevo;
+}
+
+int imprimir(struct nodo *temp)
+{
+	while(temp != 0){
+		printf("%d",temp->valor);
+		temp = temp->siguiente;
+	}
+}
+
+int main()
+{
+	struct nodo *lista = 0;
+	agregar(&lista,20);
+	agregar(&lista,15);
+	agregar(&lista,10);
+	imprimir(lista);
+}

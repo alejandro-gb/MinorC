@@ -4,9 +4,10 @@ import os
 from tkinter import filedialog
 from tkinter import messagebox
 from tkinter import ttk
-from tkinter import *, PhotoImage, simpledialog
+from tkinter import PhotoImage, simpledialog
 from tkinter.ttk import *
 from graphviz import Digraph
+import analizar
 
 #---------------------------------------BARRA DE MENU
 class BarraDeMenu:
@@ -40,8 +41,7 @@ class BarraDeMenu:
         editar.add_command(label="Reemplazar", command = parent.Reemplazar)
 
         #lista de opciones de ejecutar
-        ejecutar.add_command(label="Ascendente", command=parent.AnalisisAsc)
-        ejecutar.add_command(label="Descendente", command=parent.AnalisisDesc)
+        ejecutar.add_command(label="Interpretar", command=parent.AnalisisAsc)
         ejecutar.add_separator()
         ejecutar.add_command(label="Reporte de Errores", command=parent.Reporte)
         ejecutar.add_command(label="Tabla de simbolos", command=parent.VerTablaSimbolos)
@@ -71,11 +71,11 @@ class BarraDeMenu:
 
     # metodo para mostrar la ayuda en una alerta
     def verAyuda(self):
-        messagebox.showinfo("Ayuda", "https://github.com/alejandr076/Augus")
+        messagebox.showinfo("Ayuda", "https://github.com/alejandr076/MinorC")
 
     # metodo para ver acerca de en una alerta
     def verAcercaDe(self):
-        messagebox.showinfo("Acerca de"," Primer proyecto de compiladores 2 \n Primer semestre 2020 \n Interprete Augus \n Alejandro Garcia \n 201700801")
+        messagebox.showinfo("Acerca de"," Segundo proyecto de compiladores 2 \n Primer semestre 2020 \n Interprete MinorC \n Alejandro Garcia \n 201700801")
 
 #--------------------------------------clase que maneja el editor de texto
 class EditorAvanzado(gui.Frame):
@@ -83,12 +83,12 @@ class EditorAvanzado(gui.Frame):
     # constructor
     def __init__(self, master, *args, **kwargs):
         gui.Frame.__init__(self, *args, **kwargs)
-        fuente = ("Arial",14)
-        self.cuadro = gui.Text(self, selectbackground="lightgrey", width=120, height=20, font=fuente)
+        fuente = ("Arial",13)
+        self.cuadro = gui.Text(self, selectbackground="light grey", width=120, height=20, font=fuente)
         self.scrollbar = gui.Scrollbar(self, orient=gui.VERTICAL, command=self.cuadro.yview)
         self.cuadro.configure(yscrollcommand=self.scrollbar.set)
 
-        self.numeros_linea = NumerosLinea(self, width=20, bg='lightgrey')
+        self.numeros_linea = NumerosLinea(self, width=20, bg='light grey')
         self.numeros_linea.attach(self.cuadro)
 
         self.scrollbar.pack(side=gui.RIGHT, fill=gui.Y)
@@ -210,7 +210,7 @@ class Editor:
     def __init__(self,principal):
         principal.title("Sin titulo - Augus")
         principal.geometry("1100x700")
-        fuente = ("Arial",14)
+        fuente = ("Arial",13)
         self.principal = principal
         self.nombre = None
         self.tema = 1
@@ -224,7 +224,7 @@ class Editor:
         self.photo = PhotoImage(file ="icon2.png")
         self.buttton = gui.Button(principal,image=self.photo,state='disabled', command= lambda: self.test2.set(1))
         self.buttton.pack(side=gui.LEFT,anchor=gui.N)        
-        self.consola = gui.Text(principal, font=fuente, height=15, bg='dark sea green', fg="black", insertbackground='black')
+        self.consola = gui.Text(principal, font=fuente, height=15, bg='dark khaki', fg="black", insertbackground='black')
         self.scrollbar = gui.Scrollbar(principal, orient=gui.VERTICAL, command=self.consola.yview)
         self.consola.configure(yscrollcommand=self.scrollbar.set)
         self.scrollbar.pack(side=gui.RIGHT, fill=gui.Y)
@@ -314,11 +314,7 @@ class Editor:
     #metodo para hacer el analisis ascendente
     def AnalisisAsc(self):
         pass
-
-    # metodo para hacer el analisis descendente
-    def AnalisisDesc(self):
-        pass
-
+        
     # metodo para avanzar en el debug
     def SiguientePaso(self):
         pass
@@ -326,18 +322,18 @@ class Editor:
     # metodo para cambiar el color del tema
     def ColorTema(self):
         if (self.tema == 1):
-            self.textarea.numeros_linea.config(bg='gray26')
-            self.principal.config(bg='gray25')
-            self.textarea.config(bg='gray25')
-            self.textarea.cuadro.config(bg='gray16',foreground='snow',insertbackground='white')
+            self.textarea.numeros_linea.config(bg='slate gray')
+            self.principal.config(bg='slate gray')
+            self.textarea.config(bg='slate gray')
+            self.textarea.cuadro.config(bg='dim gray',foreground='snow',insertbackground='white')
             self.consola.config(bg='black',fg='yellow green', insertbackground='yellow green')
             self.tema = 0
         else:
-            self.textarea.numeros_linea.config(bg='lightgrey')
-            self.principal.config(bg='lightgrey')
-            self.textarea.config(bg='lightgrey')
+            self.textarea.numeros_linea.config(bg='light grey')
+            self.principal.config(bg='light grey')
+            self.textarea.config(bg='light grey')
             self.textarea.cuadro.config(bg='white',foreground='black',insertbackground='black')
-            self.consola.config(bg='dark sea green',fg='black', insertbackground='black')
+            self.consola.config(bg='dark khaki',fg='black', insertbackground='black')
             self.tema = 1
 
     # metodo para quitar los numeros de linea

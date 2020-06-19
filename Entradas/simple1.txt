@@ -1,0 +1,11 @@
+int main()
+{
+	int x = 0;
+	int a = 0;
+	while(x < 4)
+	{
+		a = a + x;
+		x = x + 1;
+	}
+	printf("%d",a);
+}
