@@ -8,6 +8,9 @@ from tkinter import PhotoImage, simpledialog
 from tkinter.ttk import *
 from graphviz import Digraph
 import analizar
+import tablaSimbolos
+import errores
+from instrucciones import *
 
 #---------------------------------------BARRA DE MENU
 class BarraDeMenu:
@@ -43,7 +46,7 @@ class BarraDeMenu:
         #lista de opciones de ejecutar
         ejecutar.add_command(label="Interpretar", command=parent.AnalisisAsc)
         ejecutar.add_separator()
-        ejecutar.add_command(label="Reporte de Errores", command=parent.Reporte)
+        ejecutar.add_command(label="Reporte de Errores", command=parent.VerReporteErrores)
         ejecutar.add_command(label="Tabla de simbolos", command=parent.VerTablaSimbolos)
         ejecutar.add_command(label="Reporte del AST", command=parent.VerAST)
         ejecutar.add_command(label="Reporte gramatical", command=parent.RepGramatical)
@@ -77,7 +80,7 @@ class BarraDeMenu:
     def verAcercaDe(self):
         messagebox.showinfo("Acerca de"," Segundo proyecto de compiladores 2 \n Primer semestre 2020 \n Interprete MinorC \n Alejandro Garcia \n 201700801")
 
-#--------------------------------------clase que maneja el editor de texto
+#--------------------------------------CLASE QUE MANEJA EL EDITOR DE TEXTO
 class EditorAvanzado(gui.Frame):
     
     # constructor
@@ -138,14 +141,11 @@ class EditorAvanzado(gui.Frame):
 
     # metodo que redibuja el texto
     def delay(self, *args):
-        self.resaltarTexto("\\$.([0-9])([0-9])*", "dolar",er=True)
-        self.resaltarTexto("exit", "exit")
-        self.resaltarTexto("(\\$ra|\\$sp)", "regs",er=True)
-        self.resaltarTexto("(goto|if)", "goto",er=True)
-        self.resaltarTexto("(main|unset|print|read|int|float|char)", "reservadas",er=True)
-        self.resaltarTexto("(\\+|=|-|\\*|abs|%|!|\\||xor|and|\\^|<|>)", "signos",er=True)
-        self.resaltarTexto("(\\[|\\]|\\(|\\))", "agrup",er=True)
-        self.resaltarTexto("#(.)+([^\r\n])", "com",er=True)
+        self.resaltarTexto("(goto|if|struct)", "goto",er=True)
+        self.resaltarTexto("(break|case|char|signed|const|continue|default|do|double|else|static|float|for|if|int|return|sizeof|extern|switch|void|while)", "reservadas",er=True)
+        self.resaltarTexto("(\\+|=|-|\\*|abs|%|!|\\||xor|and|\\^|<|~|\\?|>)", "signos",er=True)
+        self.resaltarTexto("(\\[|\\]|\\(|\\)|\\{|\\})", "agrup",er=True)
+        self.resaltarTexto("//(.)+([^\r\n])", "com",er=True)
         self.after(1, self.numeros_linea.redraw)
 
     #metodos para utilizar las funciones propias de text desde fuera
@@ -164,7 +164,7 @@ class EditorAvanzado(gui.Frame):
     def redraw(self):
         self.numeros_linea.redraw()
 
-#--------------------------------------clase que actualiza los numeros de linea
+#--------------------------------------CLASE QUE CREA LOS NUMEROS DE LINEA
 class NumerosLinea(gui.Canvas):
 
     #construtor
@@ -189,11 +189,13 @@ class NumerosLinea(gui.Canvas):
             self.create_text(1, y, anchor="nw",text=linenum, fill="black")
             i = self.texto.index("%s+1line" % i)
             
-#--------------------------------------clase que maneja la ventana principal
+#--------------------------------------CLASE PRINCIPAL QUE MANEJA LA INTERFAZ
 class Editor:
 
-    #variables
+    #VARIABLES GLOBALES
     resultado = ''
+    tablaGlobal = tablaSimbolos.TablaSimbolos()
+    tablaErrores = errores.TablaErrores()
     analisis_listo = False
     idcount = 0
     arbol = None
@@ -202,11 +204,11 @@ class Editor:
     dot = None
     tipoanalisis = True
     terminar = False
-
+    temp = 0
     i = 0    
     encontre = 'Global'
 
-    #constructor
+    #CONSTRUCTOR
     def __init__(self,principal):
         principal.title("Sin titulo - Augus")
         principal.geometry("1100x700")
@@ -231,25 +233,26 @@ class Editor:
         self.consola.pack(side=gui.LEFT, fill=gui.BOTH, expand=True)
         self.menubar = BarraDeMenu(self)
 
+    #INCREMENTAR EL CONTADOR
     def inc(self):
         self.i += 1
         return self.i
 
-    #metodo para cambiar la ayuda de la ventana
+    #CAMBIAR EL TITULO DE LA VENTANA
     def CambiarTitulo(self, name=None):
         if name:
             self.principal.title(name + "- Augus")
         else:
             self.principal.title("Sin titulo - Augus")
 
-    #metodo para crear un nuevo documento
+    #CREAR UN NUEVO ARCHIVO
     def Nuevo(self):
         self.textarea.delete(1.0, gui.END)
         self.consola.delete(1.0,gui.END)
         self.nombre = None
         self.CambiarTitulo()
 
-    #metodo para abrir un documento
+    #ABRIR UN ARCHIVO
     def Abrir(self):
         self.nombre = filedialog.askopenfilename(defaultextension=".txt", filetypes=[("All files","*.*"),("Python","*.py")])
         if self.nombre:
@@ -260,7 +263,7 @@ class Editor:
             self.textarea.numeros_linea.redraw()
             self.textarea.delay()
     
-    #metodo para guardar un documento
+    #GUARDAR EL DOCUMENTO
     def Guardar(self):
         if self.nombre:
             try:
@@ -272,7 +275,7 @@ class Editor:
         else:
             self.Guardarcomo()
     
-    #metodo para hacer el guardar como
+    #GUARDAR COMO
     def Guardarcomo(self):
         try:
             guardar_nuevo = filedialog.asksaveasfilename(initialfile="Sin titulo.txt",defaultextension=".txt", filetypes=[("All files","*.*"),("Python","*.py")])
@@ -284,26 +287,26 @@ class Editor:
         except Exception as e:
             print(e)
 
-    #metodo para copiar
+    #COPIAR EL TEXTO
     def Copiar(self):
         self.textarea.clipboard_clear()
         self.textarea.clipboard_append(self.textarea.selection_get())
 
-    #metodo para pegar
+    #PEGAR EN EL TEXTO
     def Pegar(self):
         self.textarea.insert(gui.INSERT,self.textarea.clipboard_get())
 
-    #metodo para cortar
+    #CORTAR DEL TEXTO
     def Cortar(self):
         self.Copiar()
         self.textarea.delete('sel.first','sel.last')
 
-    #metodo para Buscar
+    #BUSCAR EN EL TEXTO
     def Buscar(self):
         cadena = simpledialog.askstring('Buscar','Cadena a buscar:',parent=principal)
         self.textarea.resaltarTexto(cadena,'buscar')
 
-    #metodo para reemplazar
+    #REMPLAZAR EN EL TEXTO
     def Reemplazar(self):
         abuscar = simpledialog.askstring('Buscar','Cadena a buscar:',parent=principal)
         aremplazar = simpledialog.askstring('Reemplazar','Nueva cadena:',parent=principal)
@@ -311,15 +314,89 @@ class Editor:
         self.textarea.delete('1.0',gui.END)
         self.textarea.insert(gui.INSERT,cadena.replace(abuscar,aremplazar))
 
-    #metodo para hacer el analisis ascendente
+    #METODO PARA HACER EL ANALISIS ASCENDENTE
     def AnalisisAsc(self):
-        pass
+        self.reset()
+        self.consola.delete('1.0',gui.END)
+        self.texto = str(self.textarea.cuadro.get('1.0',gui.END))
+        self.instrucciones = analizar.parse(self.texto)
+        self.Interpretar(self.instrucciones, self.tablaGlobal)
+        self.ReporteTablaSimbolos()
+        self.ReporteErrores()
+        self.consola.insert(gui.END,self.resultado)
+
+    #METODO PARA INTERPRETAR LAS INSTRUCCIONES
+    def Interpretar(self, instrucciones, tabla):
+        #try:
+            #BUSCAR EL MAIN
+            for x in instrucciones:
+                if isinstance(x,Funcion):
+                    if (x.nombre == 'main'):
+                        self.InterpretarFuncion(x, tabla)
+                        instrucciones.remove(x)
+            
+            for x in instrucciones:
+                if isinstance(x,Asignacion) :
+                    self.InterpretarAsignacion(x, tabla, 'global')
+
+            for x in instrucciones:
+                if isinstance(x,Funcion) : self.InterpretarFuncion(x, tabla)
+        #except:
+        #    messagebox.showerror('ERROR','NO SE INTERPRETO')
         
-    # metodo para avanzar en el debug
+    #METODO PARA INTERPRETAR UNA FUNCION
+    def InterpretarFuncion(self, funcion, tabla):
+        tipo = funcion.tipo
+        nombre = funcion.nombre + ':'
+        self.concatenar(nombre)
+
+    #METODO PARA INTERPRETAR UNA ASIGNACION
+    def InterpretarAsignacion(self, ins, tabla, ambito):
+        tipo = ins.tipo.lower()
+        valor = ins.valor
+        for nombre in ins.nombres:
+            temporal = self.newTemp()
+            if(type(nombre) is str):
+                if(tipo == 'int'): valor = 0
+                elif(tipo == 'char'): valor = "''"
+                elif(tipo == 'float'): valor = 0.0
+                elif(tipo == 'double'): valor = 0.0
+                else: valor = 'None'
+                simbolo = tablaSimbolos.Simbolo(nombre, temporal, tipo, valor, ambito)
+                tabla.newSimbolo(simbolo)
+                self.concatenar(temporal+' = '+str(valor))  
+            elif(type(nombre) is tuple):
+                temporal = self.newTemp()
+                nom = nombre[0]
+                valor = self.InterpretarOperacion(nombre[1],tabla)
+                if(type(valor) is str):
+                    valor = "'"+valor+"'"
+                simbolo = tablaSimbolos.Simbolo(nom, temporal, tipo, valor, ambito)
+                tabla.newSimbolo(simbolo)
+                self.concatenar(temporal+' = '+str(valor)) 
+
+    #METODO PARA INTERPRETAR UNA OPERACION 
+    def InterpretarOperacion(self, operacion, tabla):
+        if isinstance(operacion, OpNumero):
+            return operacion.valor
+        elif isinstance(operacion, OpCadena):
+            return operacion.valor
+
+    #METODO PARA ARMAR EL RESULTADO
+    def concatenar(self,cadena):
+        self.resultado = self.resultado + cadena + '\n'
+
+    #METODO PARA CREAR UN NUEVO TEMPORAL
+    def newTemp(self):
+        new = '$t'+str(self.temp)
+        self.temp += 1
+        return new
+
+    #METODO PARA AVANZAR EN EL DEBUG
     def SiguientePaso(self):
         pass
 
-    # metodo para cambiar el color del tema
+    #METODO PARA CAMBIAR EL COLOR DEL TEMA DEL EDITOR
     def ColorTema(self):
         if (self.tema == 1):
             self.textarea.numeros_linea.config(bg='slate gray')
@@ -336,7 +413,7 @@ class Editor:
             self.consola.config(bg='dark khaki',fg='black', insertbackground='black')
             self.tema = 1
 
-    # metodo para quitar los numeros de linea
+    #METODO PARA QUITAR LOS NUMEROS DE LINEA DEL EDITOR
     def QuitarNums(self):
         if (self.numeros == 1):
             self.textarea.numeros_linea.config(width=0)
@@ -345,31 +422,147 @@ class Editor:
             self.textarea.numeros_linea.config(width=20)
             self.numeros = 1
 
-    # metodo para hacer el reporte gramatical
+    #METODO PARA HACER EL REPORTE GRAMATICAL
     def RepGramatical(self):
         pass
 
-    # metodo para hacer el reporte de errores
-    def Reporte(self):
-        pass
+    #METODO PARA HACER EL REPORTE DE ERRORES
+    def ReporteErrores(self):
+        contador = 1
+        tshtml = '''<html>
+        <head>
+        <style>
+        table {
+        width:100%;
+        }
+        table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        }
+        th, td {
+        padding: 15px;
+        text-align: left;
+        }
+        table#t01 tr:nth-child(even) {
+        background-color: #eee;
+        }
+        table#t01 tr:nth-child(odd) {
+        background-color: #fff;
+        }
+        table#t01 th {
+        background-color: red;
+        color: white;
+        }
+        </style>
+        </head>
+        <body>
+        <h2>Tabla de Errores</h2>
+        <table id="t01">
+        <tr>
+        <th>Numero</th>
+        <th>Tipo</th> 
+        <th>Descripcion</th>
+        <th>Linea</th>
+        <th>Posicion </th>
+        </tr>
+         '''
+        for x in self.tablaErrores.errores: 
+            error = self.tablaErrores.getError(x)
+            num = str(contador)
+            tipo = str(error.tipo)
+            desc = str(error.desc)
+            linea = str(error.linea)
+            pos = str(error.pos)
+            tshtml += '<tr><td>' + num + '</td><td>' + tipo + '</td><td>'+ desc  +'</td><td>' + linea + '</td><td>'+ pos +'</td></tr>\n'
+            contador = contador + 1
+        tshtml += '</table>\n</body>\n</html>'
+        f = open('ReporteEr.html', "w")
+        f.write(tshtml)
+        f.close()
 
-    #metodo para hacer el reporte
+    #METODO PARA CREAR EL REPORTE DE LA TABLA DE SIMBOLOS
+    def ReporteTablaSimbolos(self):
+        tshtml = '''<html>
+        <head>
+        <style>
+        table {
+        width:100%;
+        }
+        table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        }
+        th, td {
+        padding: 15px;
+        text-align: left;
+        }
+        table#t01 tr:nth-child(even) {
+        background-color: #eee;
+        }
+        table#t01 tr:nth-child(odd) {
+        background-color: #fff;
+        }
+        table#t01 th {
+        background-color: black;
+        color: white;
+        }
+        </style>
+        </head>
+        <body>
+        <h2>Tabla de simbolos</h2>
+        <table id="t01">
+        <tr>
+        <th>Identificador</th>
+        <th>Temporal</th>
+        <th>Valor</th> 
+        <th>Tipo</th>
+        <th>Dimension</th>
+        <th>Declarada en </th>
+        <th>Referencia</th>
+        </tr>
+         '''
+        for x in self.tablaGlobal.simbolos: 
+            val = self.tablaGlobal.getSimbolo(x)
+            ide = str(x)
+            valo = str(val.valor)
+            temp = str(val.temporal)
+            ambit = str(val.ambito)
+            tipo = str(val.tipo)
+            dim = str(val.dimension)
+            dire = str(val.referencia)
+            tshtml += '<tr><td>' + ide + '</td>'+'<td>' + temp + '</td>'+'<td>' + valo + '</td><td>'+ tipo  +'</td><td>'+dim+'</td><td>'+ambit +'</td><td>'+dire+'</td></tr>\n'
+        tshtml += '</table>\n</body>\n</html>'
+        f = open('ReporteTS.html', "w")
+        f.write(tshtml)
+        f.close()
+
+    #METODO PARA VER LA TABLA DE SIMBOLOS
     def VerTablaSimbolos(self):
-        pass
+        os.system('start '+os.path.realpath('ReporteTs.html'))
         
+    def VerReporteErrores(self):
+        os.system('start '+os.path.realpath('ReporteEr.html'))
+
+        
+    #METODO PARA DETENER EL DEBUG
     def stop(self):
         pass
 
-    # metodo para crear un error semantico
+    #METODO PARA AGREGAR UN ERROR SEMANTICO
     def errorSemantico(self,descripcion,info1,info2):
-        pass
+        nuevo = errores.Error('SEMANTICO',descripcion,info1,info2)
+        self.tablaErrores.newError(nuevo)
 
-    # metodo para abrir el reporte del ast
+    #METODO PARA VER EL AST
     def VerAST(self):
         pass
 
+    #METODO PARA LIMPIAR LAS TABLAS Y VARIABLES
     def reset(self):
-        pass
+        self.resultado = ''
+        self.temp = 0
+        self.tablaGlobal.simbolos.clear()
+        self.tablaErrores.errores.clear()
 
 #--------------------------------------loop para mantener la ejecucion del editor
 if __name__ == "__main__":

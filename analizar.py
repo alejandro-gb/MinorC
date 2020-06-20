@@ -159,7 +159,7 @@ def t_IDENTIFICADOR(t):
 
 #METODO PARA ACEPTAR UNA CADENA QUITANDO LAS COMILLAS DOBLES
 def t_CADENA(t):
-    r"\".*?\""
+    r"(\"|').*?(\"|')"
     t.value = t.value[1:-1]
     return t 
 
@@ -183,10 +183,14 @@ def t_newline(t):
 
 #METODO PARA RECONOCER UN ERROR
 def t_error(t):
-    print('Error lexico '+ t.value[0])
+    desc = 'El caracter: ' + t.value[0] + ' no es valido'
+    nuevo = errores.Error('LEXICO',desc, t.lineno, t.lexpos)
+    main.Editor.tablaErrores.newError(nuevo)
     t.lexer.skip(1)
 
 import ply.lex as lex
+import main
+import errores
 lexer = lex.lex()
 
 #PRECEDENCIA
@@ -203,126 +207,82 @@ precedence = (
 )
 
 #---------------------------------ANALIZADOR SINTACTICO
+from instrucciones import *
+
 def p_start(t):
-    '''start : inicio'''
+    'start : instrucciones'
+    t[0] = t[1]
 
-def p_inicio(t):
-    '''inicio : IDENTIFICADOR
-              | CADENA
-              | PARA expresion PARC 
-              '''
+def p_instrucciones(t):
+    'instrucciones : instrucciones instruccion'
+    t[1].append(t[2])
+    t[0] = t[1]
 
-def p_expresion(t):
-    '''expresion : asignacion
-                 | expresion COMA asignacion'''
+def p_una_instruccion(t):
+    'instrucciones : instruccion'
+    t[0] = [t[1]]
+
+def p_instruccion(t):
+    '''instruccion : funcion
+                   | declaracion'''
+    t[0] = t[1]
+
+def p_funcion(t):
+    '''funcion : tipo IDENTIFICADOR PARA PARC LLAVEA LLAVEC'''
+    t[0] = Funcion(t[1],t[2])
+
+def p_declaracion(t):
+    '''declaracion : tipo lista_asignaciones PUNTOYCOMA'''
+    t[0] = Asignacion(t[1],t[2])
+
+def p_lista_asignaciones(t):
+    'lista_asignaciones : lista_asignaciones COMA asignacion'
+    t[1].append(t[3])
+    t[0] = t[1]
+
+def p_una_asignacion(t):
+    'lista_asignaciones : asignacion'
+    t[0] = [t[1]]
 
 def p_asignacion(t):
-    '''asignacion : condicional
-                  | unario assoperador asignacion'''
+    'asignacion : IDENTIFICADOR IGUAL expresion'
+    t[0] = (t[1],t[3])
 
-def p_assoperador(t):
-    '''assoperador : IGUAL
-                   | ASSIGN_MUL
-                   | ASSIGN_DIV
-                   | ASSIGN_MOD
-                   | ASSIGN_MAS
-                   | ASSIGN_MENOS
-                   | ASSIGN_SHIFTL
-                   | ASSIGN_SHIFTR
-                   | ASSIGN_AND
-                   | ASSIGN_OR
-                   | ASSIGN_XOR'''
+def p_asignacion_none(t):
+    'asignacion : IDENTIFICADOR'
+    t[0] = t[1]
 
-def p_condicional(t):
-    '''condicional : logicaoexpresion
-                   | logicaoexpresion INTERROGACION expresion DOSPUNTOS condicional'''
+def p_tipo(t):
+    '''tipo : INT
+            | CHAR
+            | DOUBLE
+            | FLOAT
+            | VOID'''
+    t[0] = t[1]
 
-def p_logicaoexpresion(t):
-    '''logicaoexpresion : logicayexpresion
-                        | logicaoexpresion OR logicayexpresion'''
+#------------------------------EXPRESIONES
+def p_expNum(t):
+    '''expresion : ENTERO
+                 | DECIMAL'''
+    t[0] = OpNumero(t[1])
 
-def p_logicayexpresion(t):
-    '''logicayexpresion : inclusivaoexpresion
-                        | logicayexpresion AND inclusivaoexpresion'''
+def p_expCadena(t):
+    'expresion : CADENA'
+    t[0] = OpCadena(t[1])
 
-def p_inclusivaoexpresion(t):
-    '''inclusivaoexpresion : exclusivaoexpresion
-                           | inclusivaoexpresion BARRAOR exclusivaoexpresion'''
-
-def p_exclusivaoexpresion(t):
-    '''exclusivaoexpresion : yexpresion
-                           | exclusivaoexpresion PICO yexpresion'''
-
-def p_yexpresion(t):
-    '''yexpresion : equiexpresion
-                  | yexpresion ANPERSAND equiexpresion'''
-
-def p_equiexpresion(t):
-    '''equiexpresion : relacional
-                     | equiexpresion EQUIVALENTE relacional
-                     | equiexpresion DIFERENTE relacional'''
-
-def p_relacional(t):
-    '''relacional : shiftexpresion
-                  | relacional MAYOR shiftexpresion
-                  | relacional MENOR shiftexpresion
-                  | relacional MENORIGUAL shiftexpresion
-                  | relacional MAYORIGUAL shiftexpresion'''
+#METODO PARA MANEJAR LOS ERRORES SINTACTICOS
+def p_error(t):
+    if t:
+        desc = 'El token: ' + str(t.value) + ' no se esperaba'
+        nuevo = errores.Error('SINTACTICO',desc,t.lineno,t.lexpos)
+        main.Editor.tablaErrores.newError(nuevo)
+        parser.errok()
+    else:
+        desc = 'Error sintactico al final del archivo'
+        nuevo = errores.Error('SINTACTICO',desc,'EOF','EOF')
+        main.Editor.tablaErrores.newError(nuevo)
         
-def p_shiftexpresion(t):
-    '''shiftexpresion : adicion
-                      | shiftexpresion SHIFTL adicion
-                      | shiftexpresion SHIFTR adicion'''
-        
-def p_adicion(t):
-    '''adicion : multiplicacion
-               | adicion MAS multiplicacion
-               | adicion MENOS multiplicacion'''
 
-def p_multiplicacion(t):
-    '''multiplicacion : casteo
-                      | multiplicacion POR casteo
-                      | multiplicacion DIV casteo
-                      | multiplicacion MOD casteo'''
-
-def p_casteo(t):
-    '''casteo : unario
-              | PARA nombretipo PARC casteo'''
-
-def p_unario(t):
-    '''unario : postfijo
-              | INCREMENTO unario
-              | DECREMENTO unario
-              | operador casteo
-              | SIZEOF unario
-              | SIZEOF PARA nombretipo PARC'''
-
-def p_operador(t):
-    '''operador : ANPERSAND
-                | POR
-                | MAS
-                | MENOS
-                | ADMIRACION
-                | NOTBIT'''
-
-def p_postfijo(t):
-    '''postfijo : inicio
-                | postfijo CORCHETEA expresion CORCHETEC
-                | postfijo PARA PARC
-                | postfijo PARA listaargumentosexp PARC
-                | postfijo PUNTO IDENTIFICADOR
-                | postfijo PUNTERO IDENTIFICADOR
-                | postfijo INCREMENTO
-                | postfijo DECREMENTO
-                | PARA nombretipo PARC LLAVEA listainicial LLAVEC
-                | PARA nombretipo PARC LLAVEA listainicial COMA LLAVEC'''
-
-def P_listaargumentosexp(t):
-    '''listaargumentosexp : asignacion
-                          | listaargumentosexp COMA asignacion'''
-
-def p_listainicial(t):
-    '''listainicial : '''
 
 #------------------------------------------IMPORTS
 import ply.yacc as yacc

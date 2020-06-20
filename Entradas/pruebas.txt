@@ -1,0 +1,16 @@
+int func1()
+{
+
+}
+
+
+int i;
+char c = 'c';
+double d;
+float f;
+
+int main()
+{
+
+}
+
