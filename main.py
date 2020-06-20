@@ -205,6 +205,8 @@ class Editor:
     temp = 0
     i = 0    
     encontre = 'Global'
+    listatemp = []
+    fueop = False
 
     #CONSTRUCTOR
     def __init__(self,principal):
@@ -334,8 +336,10 @@ class Editor:
                         instrucciones.remove(x)
             
             for x in instrucciones:
-                if isinstance(x,Asignacion) : self.InterpretarAsignacion(x, tabla, 'global')
+                if isinstance(x,Declaracion) : self.InterpretarDeclaracion(x, tabla, 'global')
                 elif isinstance(x,Printf) : self.InterpretarPrintf(x,tabla)
+                elif isinstance(x,Arreglo) : self.InterpretarArreglo(x,tabla,'global')
+                elif isinstance(x,Asignacion) : self.InterpretarAsignacion(x,tabla)
 
             for x in instrucciones:
                 if isinstance(x,Funcion) : self.InterpretarFuncion(x, tabla)
@@ -354,27 +358,37 @@ class Editor:
         formato = forma.split('%')
         try:
             for i in range(1,len(lista)):
-                simbolo = self.InterpretarOperacion(lista[i],tabla)
-                tipo = simbolo.tipo
-                form = formato[i].replace(' ','')
-                temp = simbolo.temporal
-                tprint = 'print('+ temp +');'
-                if(tipo == 'int' and (form == 'd' or form == 'i')):
+                if isinstance(lista[i],OpNormal):
+                    valor = self.InterpretarOperacion(lista[i],tabla)
+                    self.TraducirOp(None)
+                    toprint = str(self.listatemp[len(self.listatemp)-1][0])
+                    tprint = 'print('+ toprint +');'
                     self.concatenar(tprint)
-                elif((tipo == 'float' or tipo =='double') and form == 'f'):
-                    self.concatenar(tprint)
-                elif(tipo == 'char' and (form == 'c' or form == 's')):
-                    self.concatenar(tprint)
-                else:
-                    self.errorSemantico('FORMAT_ERROR','LINEA','El formato para imprimir no concuerda con el tipo de la variable')
+                    self.fueop = False
+                    self.listatemp.clear()
+                elif isinstance(lista[i],OpId):
+                    simbolo = self.InterpretarOperacion(lista[i],tabla)
+                    tipo = simbolo.tipo
+                    form = formato[i].replace(' ','')
+                    temp = simbolo.temporal
+                    tprint = 'print('+ temp +');'
+                    if(tipo == 'int' and (form == 'd' or form == 'i')):
+                        self.concatenar(tprint)
+                    elif((tipo == 'float' or tipo =='double') and form == 'f'):
+                        self.concatenar(tprint)
+                    elif(tipo == 'char' and form == 'c'):
+                        self.concatenar(tprint)
+                    elif(tipo == 'char*' and form == 's'):
+                        self.concatenar(tprint)
+                    else:
+                        self.errorSemantico('FORMAT_ERROR','LINEA','El formato para imprimir no concuerda con el tipo de la variable')
         except IndexError:
             self.errorSemantico('INDEX_ERROR','LINEA','Se intenta imprimir fuera de rango')
         except:
             self.errorSemantico('NONETYPE_ERROR','LINEA','Se intenta imprimir un valor que no existe')
-
-            
+     
     #METODO PARA INTERPRETAR UNA ASIGNACION
-    def InterpretarAsignacion(self, ins, tabla, ambito):
+    def InterpretarDeclaracion(self, ins, tabla, ambito):
         tipo = ins.tipo.lower()
         valor = ins.valor
         for nombre in ins.nombres:
@@ -395,17 +409,84 @@ class Editor:
             elif(type(nombre) is tuple):
                 nom = nombre[0]
                 valor = self.InterpretarOperacion(nombre[1],tabla)
+                self.TraducirOp(temporal)
                 if(self.VerificarTipo(valor,tipo)):
                     if(type(valor) is str):
                         valor = "'"+valor+"'"
                     simbolo = tablaSimbolos.Simbolo(nom, temporal, tipo, valor, ambito)
                     tabla.newSimbolo(simbolo)
-                    self.concatenar(temporal+' = '+str(valor)+';')
+                    if(self.fueop == False):
+                        self.concatenar(temporal+' = '+str(valor)+';')
+                    else:
+                        self.listatemp.clear()
+                        self.fueop = False
                 else:
                     print(type(valor))
                     self.errorSemantico('TYPE_ERROR','LINEA','El tipo debe ser el mismo')
 
+    def TraducirOp(self, var):
+        test = ''
+        if self.listatemp:
+            for x in range(0,len(self.listatemp)):
+                elemento = self.listatemp[x]
+                if(x == 0):
+                    trad = str(elemento[0])+' = '+str(elemento[1])+str(elemento[2])+str(elemento[3])+';'
+                else:
+                    trad = str(elemento[0]) + ' = '+str(self.listatemp[x-1][0])+str(elemento[2])+str(elemento[3])+';'
+                self.concatenar(trad)
+                test = str(elemento[0])
+            if(var is not None):
+                self.concatenar(str(var)+' = '+str(test)+';')
+            self.fueop = True
 
+    def InterpretarAsignacion(self, ins, tabla):
+        paravar = ins.paravar
+        valor = self.InterpretarOperacion(ins.valor,tabla)
+        simbolo = tabla.getSimbolo(paravar)
+        if(simbolo is not None):
+            if(ins.dimensiones is None):
+                simbolo.valor = valor
+                self.TraducirOp(simbolo.temporal)
+                if(self.fueop == False):
+                    self.concatenar(simbolo.temporal+' = '+str(valor)+';')
+                else:
+                    self.listatemp.clear()
+                    self.fueop = False
+                
+            else:
+                exp = simbolo.temporal
+                for x in ins.dimensiones:
+                    posicion = self.InterpretarOperacion(x,tabla)
+                    exp +='['+str(posicion)+']'
+                exp += ' = '+str(valor)+';'
+                self.concatenar(exp)
+        else:
+            self.errorSemantico('NONE_ERROR','LINEA','La variable no ha sido declarada')
+
+    #METODO PARA INTERPRETAR UN ARREGLO
+    def InterpretarArreglo(self, ins, tabla, ambito):
+        tipo = ins.tipo
+        nombre = ins.nombre
+        dimensiones = ins.dimensiones
+        valor = ''
+        temporal = self.newTemp()
+        if(type(dimensiones) is list):
+            numdim = len(dimensiones)
+            dims = []
+            for x in dimensiones:
+                val = self.InterpretarOperacion(x,tabla)
+                dims.append(val)
+            simbolo = tablaSimbolos.Simbolo(nombre, temporal, tipo, dims, ambito,numdim)
+            tabla.newSimbolo(simbolo)
+            self.concatenar(temporal+'='+'array();')
+        else:
+            valor = self.InterpretarOperacion(dimensiones,tabla)
+            tipo = 'char*'
+            simbolo = tablaSimbolos.Simbolo(nombre,temporal,tipo,valor,ambito)
+            tabla.newSimbolo(simbolo)
+            self.concatenar(temporal+'='+"'"+valor+"';")
+
+    #METODO PARA VERIFICAR SI LOS TIPOS SON IGUALES
     def VerificarTipo(self, tipo1,tipo2):
         if(type(tipo1) is str and tipo2 == 'char'):
             return True
@@ -420,6 +501,21 @@ class Editor:
     def InterpretarOperacion(self, operacion, tabla):
         if isinstance(operacion, OpNumero):
             return operacion.valor
+        elif isinstance(operacion, OpNormal):
+            op1 = self.InterpretarOperacion(operacion.op1,tabla)
+            op2 = self.InterpretarOperacion(operacion.op2,tabla)
+            signo = operacion.signo
+            if(op1 != None and op2 != None):
+                if signo == Aritmetica.SUMA :
+                    temporal = self.newTemp()
+                    valor = op1 + op2
+                    self.listatemp.append([temporal,str(op1),'+',str(op2)])
+                    return valor
+                else:
+                    return None
+            else:
+                self.errorSemantico('OPERATION_ERROR','LINEA','Operacion invalida (operandos?)')
+                return None        
         elif isinstance(operacion, OpCadena):
             return operacion.valor
         elif isinstance(operacion, OpId):
@@ -430,10 +526,21 @@ class Editor:
             else:
                 var = tabla.getSimbolo(operacion.id)
                 return var
+        else:
+            print(type(operacion))
+            print('aqui')
 
     #METODO PARA ARMAR EL RESULTADO
     def concatenar(self,cadena):
         self.resultado = self.resultado + cadena + '\n'
+
+    #METODO PARA BUSCAR UN TEMPORAL
+    def searchTemp(self,temp):
+        for simbolo in self.tablaGlobal.simbolos:
+            sim = self.tablaGlobal.getSimbolo(simbolo)
+            if (sim.temporal == temp): return True
+        return False
+
 
     #METODO PARA CREAR UN NUEVO TEMPORAL
     def newTemp(self):

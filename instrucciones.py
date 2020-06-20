@@ -11,14 +11,30 @@ class Funcion(Instruccion):
         self.tipo = tipo
         self.nombre = nombre
 
-#CLASE QUE MANEJA UNA ASIGNACION
-class Asignacion(Instruccion):
+#CLASE QUE MANEJA UNA DECLARACION
+class Declaracion(Instruccion):
     #CONSTRUCTOR RECIBE EL TIPO, UNA LISTA DE NOMBRES Y EL VALOR DE UNA VARIABLE
-    def __init__(self, tipo, nombres, valor = None, size = 0, ambito ='global'):
+    def __init__(self, tipo, nombres, valor = None):
         self.tipo = tipo
-        self.size = size
         self.nombres = nombres
         self.valor = valor
+
+#CLASE QUE MANEJA LAS ASIGNACIONES
+class Asignacion(Instruccion):
+    #CONSTRUCTOR RECIBE EL ID Y EL VALOR
+    def __init__(self, paravar, valor,dimensiones = None):
+        self.paravar = paravar
+        self.dimensiones = dimensiones
+        self.valor = valor
+
+#CLASE QUE MANEJA LOS ARREGLOS
+class Arreglo(Instruccion):
+    #CONSTRUCTOR RECIBE EL TIPO, NOMBRE, DIMENSIONES
+    def __init__(self, tipo, nombre, dimensiones):
+        self.tipo = tipo
+        self.nombre = nombre
+        self.dimensiones = dimensiones
+        
 
 #CLASE QUE MANEJA EL PRINTF
 class Printf(Instruccion):
@@ -64,6 +80,14 @@ class Logica(Enum):
 class Operacion():
     pass
 
+#CLASE QUE DEFINE UNA OPERACION NORMAL
+class OpNormal(Operacion):
+    #CONSTRUCTOR RECIBE LOS OPERANDOS Y EL SIGNO
+    def __init__(self, op1, op2, signo):
+        self.op1 = op1
+        self.op2 = op2
+        self.signo = signo
+        
 #CLASE QUE DEFINE LOS NUMEROS
 class OpNumero(Operacion):
     #CONSTRUCTOR RECIBE EL VALOR DEL NUMERO

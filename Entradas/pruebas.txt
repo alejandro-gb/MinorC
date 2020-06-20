@@ -8,10 +8,17 @@ int i;
 char c = 'c';
 double d;
 float f;
-char s[] = "Hola";
+char s[] = "Hello";
 printf("%d %c %f %f %s",i,c,d,f,s);
+int m1[5];
+m1[0] = 6;
+int m3[2][2];
 
 int main()
 {
 
 }
+
+
+
+

@@ -34,7 +34,7 @@ class TablaSimbolos():
             return None
         else:
             self.simbolos[simbolo.id] = simbolo
-
+            
     #METODO PARA DEFINIR EL VALOR DE UN SIMBOLO
     def setValor(self, id, valor):
         if not id in self.simbolos:

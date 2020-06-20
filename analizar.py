@@ -234,7 +234,9 @@ def p_una_instruccion(t):
 def p_instruccion(t):
     '''instruccion : funcion
                    | declaracion
-                   | printf'''
+                   | printf
+                   | arreglo
+                   | asignacion'''
     t[0] = t[1]
 
 def p_prinf(t):
@@ -255,30 +257,54 @@ def p_funcion(t):
     t[0] = Funcion(t[1],t[2])
 
 def p_declaracion(t):
-    'declaracion : tipo lista_asignaciones PUNTOYCOMA'
-    t[0] = Asignacion(t[1],t[2])
+    'declaracion : tipo lista_impasignaciones PUNTOYCOMA'
+    t[0] = Declaracion(t[1],t[2])
 
-def p_lista_asignaciones(t):
-    'lista_asignaciones : lista_asignaciones COMA asignacion'
+def p_arreglo(t):
+    'arreglo : tipo IDENTIFICADOR lista_dimension PUNTOYCOMA'
+    t[0] = Arreglo(t[1],t[2],t[3])
+
+def p_arreglostr(t):
+    'arreglo : tipo IDENTIFICADOR CORCHETEA CORCHETEC IGUAL expresion PUNTOYCOMA'
+    t[0] = Arreglo(t[1],t[2],t[6])
+
+def p_lista_impasignaciones(t):
+    'lista_impasignaciones : lista_impasignaciones COMA implict_asignacion'
     t[1].append(t[3])
     t[0] = t[1]
 
-def p_una_asignacion(t):
-    'lista_asignaciones : asignacion'
+def p_lista_dimension(t):
+    'lista_dimension : lista_dimension dimension'
+    t[1].append(t[2])
+    t[0] = t[1]
+
+def p_una_impasignacion(t):
+    'lista_impasignaciones : implict_asignacion'
     t[0] = [t[1]]
 
-def p_asignacion(t):
-    '''asignacion : IDENTIFICADOR IGUAL expresion
-                  | IDENTIFICADOR CORCHETEA CORCHETEC IGUAL expresion'''
-    if(t[2] == '='):        
-        t[0] = (t[1],t[3])
-    else:
-        t[0] = (t[1],t[5])
+def p_una_dimension(t):
+    'lista_dimension : dimension'
+    t[0] = [t[1]]
 
-def p_asignacion_none(t):
-    '''asignacion : IDENTIFICADOR
-                  | IDENTIFICADOR CORCHETEA CORCHETEC'''
+def p_impasignacion(t):
+    'implict_asignacion : IDENTIFICADOR IGUAL expresion'        
+    t[0] = (t[1],t[3])
+
+def p_dimension(t):
+    'dimension : CORCHETEA expresion CORCHETEC'
+    t[0] = t[2]
+
+def p_impasignacion_none(t):
+    'implict_asignacion : IDENTIFICADOR'
     t[0] = t[1]
+
+def p_asignacion(t):
+    '''asignacion : IDENTIFICADOR IGUAL expresion PUNTOYCOMA
+                  | IDENTIFICADOR lista_dimension IGUAL expresion PUNTOYCOMA'''
+    if(t[2] == '='):
+        t[0] = Asignacion(t[1],t[3])
+    else:
+        t[0] = Asignacion(t[1],t[4],t[2])
 
 def p_tipo(t):
     '''tipo : INT
@@ -289,6 +315,62 @@ def p_tipo(t):
     t[0] = t[1]
 
 #------------------------------EXPRESIONES
+def p_exprexion(t):
+    '''expresion : expresion MAS expresion
+                 | expresion MENOS expresion
+                 | expresion POR expresion
+                 | expresion DIV expresion
+                 | expresion MOD expresion
+                 | expresion MAYOR expresion
+                 | expresion MENOR expresion
+                 | expresion MAYORIGUAL expresion
+                 | expresion MENORIGUAL expresion
+                 | expresion EQUIVALENTE expresion
+                 | expresion DIFERENTE expresion
+                 | expresion AND expresion
+                 | expresion OR expresion
+                 | expresion PICO expresion
+                 | expresion ANPERSAND expresion
+                 | expresion BARRAOR expresion
+                 | expresion SHIFTR expresion
+                 | expresion SHIFTL expresion'''
+    if t[2] == '+' :
+        t[0] = OpNormal(t[1],t[3],Aritmetica.SUMA)
+    elif t[2] == '-' :
+        t[0] = OpNormal(t[1],t[3],Aritmetica.RESTA)
+    elif t[2] == '*' :
+        t[0] = OpNormal(t[1],t[3],Aritmetica.MULTI)
+    elif t[2] == '/' :
+        t[0] = OpNormal(t[1],t[3],Aritmetica.DIV)
+    elif t[2] == '%' :
+        t[0] = OpNormal(t[1],t[3],Aritmetica.MODULO)
+    elif t[2] == '<' :
+        t[0] = OpNormal(t[1],t[3],Relacional.MENOR)
+    elif t[2] == '>' :
+        t[0] = OpNormal(t[1],t[3],Relacional.MAYOR)
+    elif t[2] == '<=' :
+        t[0] = OpNormal(t[1],t[3],Relacional.MENORQUE)
+    elif t[2] == '>=' :
+        t[0] = OpNormal(t[1],t[3],Relacional.MAYORQUE)
+    elif t[2] == '==' :
+        t[0] = OpNormal(t[1],t[3],Relacional.EQUIVALENTE)
+    elif t[2] == '!=' :
+        t[0] = OpNormal(t[1],t[3],Relacional.DIFERENTE)
+    elif t[2] == '&&' :
+        t[0] = OpNormal(t[1],t[3],Logica.AND)
+    elif t[2] == '||' :
+        t[0] = OpNormal(t[1],t[3],Logica.OR)
+    elif t[2] == '&' :
+        t[0] = OpNormal(t[1],t[3],Bits.BITAND)
+    elif t[2] == '|' :
+        t[0] = OpNormal(t[1],t[3],Bits.BITOR)
+    elif t[2] == '^' :
+        t[0] = OpNormal(t[1],t[3],Bits.BITXOR)
+    elif t[2] == '<<' :
+        t[0] = OpNormal(t[1],t[3],Bits.BITSHL)
+    elif t[2] == '>>' :
+        t[0] = OpNormal(t[1],t[3],Bits.BITSHR)
+
 def p_expNum(t):
     '''expresion : ENTERO
                  | DECIMAL'''
