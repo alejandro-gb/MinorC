@@ -86,7 +86,7 @@ class EditorAvanzado(gui.Frame):
     # constructor
     def __init__(self, master, *args, **kwargs):
         gui.Frame.__init__(self, *args, **kwargs)
-        fuente = ("Arial",13)
+        fuente = ("Arial",14)
         self.cuadro = gui.Text(self, selectbackground="light grey", width=120, height=20, font=fuente)
         self.scrollbar = gui.Scrollbar(self, orient=gui.VERTICAL, command=self.cuadro.yview)
         self.cuadro.configure(yscrollcommand=self.scrollbar.set)
@@ -98,12 +98,10 @@ class EditorAvanzado(gui.Frame):
         self.numeros_linea.pack(side=gui.LEFT, fill=gui.Y, padx=(5, 0))
         self.cuadro.pack(side=gui.TOP, fill=gui.BOTH, expand=True)
 
-        self.cuadro.tag_configure("dolar", foreground="blue")
-        self.cuadro.tag_configure("exit", foreground="red")
         self.cuadro.tag_configure("regs", foreground="firebrick4")
         self.cuadro.tag_configure("reservadas", foreground="steel blue")
         self.cuadro.tag_configure("goto", foreground="purple1")
-        self.cuadro.tag_configure("signos", foreground="dark green")
+        self.cuadro.tag_configure("signos", foreground="red")
         self.cuadro.tag_configure("agrup",foreground="orange")
         self.cuadro.tag_configure("com",foreground="gray")
         self.cuadro.tag_configure("buscar",background="sky blue")
@@ -142,8 +140,8 @@ class EditorAvanzado(gui.Frame):
     # metodo que redibuja el texto
     def delay(self, *args):
         self.resaltarTexto("(goto|if|struct)", "goto",er=True)
-        self.resaltarTexto("(break|case|char|signed|const|continue|default|do|double|else|static|float|for|if|int|return|sizeof|extern|switch|void|while)", "reservadas",er=True)
-        self.resaltarTexto("(\\+|=|-|\\*|abs|%|!|\\||xor|and|\\^|<|~|\\?|>)", "signos",er=True)
+        self.resaltarTexto("(printf|scanf|break|case|char|signed|const|continue|default|do|double|else|static|float|for|if|int|return|sizeof|extern|switch|void|while)", "reservadas",er=True)
+        self.resaltarTexto("(\\+|=|-|\\*|abs|%|!|\\||xor|and|\\^|<|~|\\?|>|;|:)", "signos",er=True)
         self.resaltarTexto("(\\[|\\]|\\(|\\)|\\{|\\})", "agrup",er=True)
         self.resaltarTexto("//(.)+([^\r\n])", "com",er=True)
         self.after(1, self.numeros_linea.redraw)
@@ -211,7 +209,7 @@ class Editor:
     #CONSTRUCTOR
     def __init__(self,principal):
         principal.title("Sin titulo - Augus")
-        principal.geometry("1100x700")
+        principal.geometry("600x500")
         fuente = ("Arial",13)
         self.principal = principal
         self.nombre = None
@@ -336,8 +334,8 @@ class Editor:
                         instrucciones.remove(x)
             
             for x in instrucciones:
-                if isinstance(x,Asignacion) :
-                    self.InterpretarAsignacion(x, tabla, 'global')
+                if isinstance(x,Asignacion) : self.InterpretarAsignacion(x, tabla, 'global')
+                elif isinstance(x,Printf) : self.InterpretarPrintf(x,tabla)
 
             for x in instrucciones:
                 if isinstance(x,Funcion) : self.InterpretarFuncion(x, tabla)
@@ -350,6 +348,31 @@ class Editor:
         nombre = funcion.nombre + ':'
         self.concatenar(nombre)
 
+    def InterpretarPrintf(self,ins,tabla):
+        lista = ins.listavalores
+        forma = self.InterpretarOperacion(lista[0],tabla)
+        formato = forma.split('%')
+        try:
+            for i in range(1,len(lista)):
+                simbolo = self.InterpretarOperacion(lista[i],tabla)
+                tipo = simbolo.tipo
+                form = formato[i].replace(' ','')
+                temp = simbolo.temporal
+                tprint = 'print('+ temp +');'
+                if(tipo == 'int' and (form == 'd' or form == 'i')):
+                    self.concatenar(tprint)
+                elif((tipo == 'float' or tipo =='double') and form == 'f'):
+                    self.concatenar(tprint)
+                elif(tipo == 'char' and (form == 'c' or form == 's')):
+                    self.concatenar(tprint)
+                else:
+                    self.errorSemantico('FORMAT_ERROR','LINEA','El formato para imprimir no concuerda con el tipo de la variable')
+        except IndexError:
+            self.errorSemantico('INDEX_ERROR','LINEA','Se intenta imprimir fuera de rango')
+        except:
+            self.errorSemantico('NONETYPE_ERROR','LINEA','Se intenta imprimir un valor que no existe')
+
+            
     #METODO PARA INTERPRETAR UNA ASIGNACION
     def InterpretarAsignacion(self, ins, tabla, ambito):
         tipo = ins.tipo.lower()
@@ -357,23 +380,41 @@ class Editor:
         for nombre in ins.nombres:
             temporal = self.newTemp()
             if(type(nombre) is str):
-                if(tipo == 'int'): valor = 0
-                elif(tipo == 'char'): valor = "''"
-                elif(tipo == 'float'): valor = 0.0
-                elif(tipo == 'double'): valor = 0.0
-                else: valor = 'None'
+                if(valor is None):
+                    if(tipo == 'int'): valor = 0
+                    elif(tipo == 'char'): valor = "''"
+                    elif(tipo == 'float'): valor = 0.0
+                    elif(tipo == 'double'): valor = 0.0
+                    else: valor = 'None'
+                else:
+                    val = self.InterpretarOperacion(valor,tabla)
+                    valor = '"'+val+'"'
                 simbolo = tablaSimbolos.Simbolo(nombre, temporal, tipo, valor, ambito)
                 tabla.newSimbolo(simbolo)
-                self.concatenar(temporal+' = '+str(valor))  
+                self.concatenar(temporal+' = '+str(valor)+';')
             elif(type(nombre) is tuple):
-                temporal = self.newTemp()
                 nom = nombre[0]
                 valor = self.InterpretarOperacion(nombre[1],tabla)
-                if(type(valor) is str):
-                    valor = "'"+valor+"'"
-                simbolo = tablaSimbolos.Simbolo(nom, temporal, tipo, valor, ambito)
-                tabla.newSimbolo(simbolo)
-                self.concatenar(temporal+' = '+str(valor)) 
+                if(self.VerificarTipo(valor,tipo)):
+                    if(type(valor) is str):
+                        valor = "'"+valor+"'"
+                    simbolo = tablaSimbolos.Simbolo(nom, temporal, tipo, valor, ambito)
+                    tabla.newSimbolo(simbolo)
+                    self.concatenar(temporal+' = '+str(valor)+';')
+                else:
+                    print(type(valor))
+                    self.errorSemantico('TYPE_ERROR','LINEA','El tipo debe ser el mismo')
+
+
+    def VerificarTipo(self, tipo1,tipo2):
+        if(type(tipo1) is str and tipo2 == 'char'):
+            return True
+        elif(type(tipo1) is int and tipo2 == 'int'):
+            return True
+        elif(type(tipo1) is float and (tipo2 == 'double' or tipo2 == 'float')):
+            return True
+        else:
+            return False
 
     #METODO PARA INTERPRETAR UNA OPERACION 
     def InterpretarOperacion(self, operacion, tabla):
@@ -381,6 +422,14 @@ class Editor:
             return operacion.valor
         elif isinstance(operacion, OpCadena):
             return operacion.valor
+        elif isinstance(operacion, OpId):
+            variable = tabla.getSimbolo(operacion.id)
+            if(variable == None):
+                self.errorSemantico('UNDEFINED_VARIABLE','LINEA','La variable no existe')
+                return None
+            else:
+                var = tabla.getSimbolo(operacion.id)
+                return var
 
     #METODO PARA ARMAR EL RESULTADO
     def concatenar(self,cadena):

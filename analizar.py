@@ -28,6 +28,8 @@ reservadas = {
     'switch':'SWITCH',
     'void':'VOID',
     'while':'WHILE',
+    'printf':'PRINTF',
+    'scanf':'SCANF',
 }
 
 #LISTA DE TOKENS
@@ -195,15 +197,22 @@ lexer = lex.lex()
 
 #PRECEDENCIA
 precedence = (
+    #OPERADOR COMA
+    #ASIGNACIONES
+    #TERNARIO
     ('left','ADMIRACION','AND','OR'),
-    ('left','EQUIVALENTE','DIFERENTE'),
-    ('left','MAYOR','MAYORIGUAL','MENOR','MENORIGUAL'),
     ('left','BARRAOR'), 
     ('left','PICO'),
     ('left','ANPERSAND'),
+    ('left','EQUIVALENTE','DIFERENTE'),
+    ('left','MAYOR','MAYORIGUAL','MENOR','MENORIGUAL'),
     ('left','SHIFTL','SHIFTR'),
     ('left','MAS','MENOS'),
     ('left','POR','DIV','MOD')
+    #SIZEOF
+    #CASTEOS
+    #OPERADOR UNARIO
+    #FUNCIONES
 )
 
 #---------------------------------ANALIZADOR SINTACTICO
@@ -224,15 +233,29 @@ def p_una_instruccion(t):
 
 def p_instruccion(t):
     '''instruccion : funcion
-                   | declaracion'''
+                   | declaracion
+                   | printf'''
     t[0] = t[1]
+
+def p_prinf(t):
+    'printf : PRINTF PARA listaprint PARC PUNTOYCOMA'
+    t[0] = Printf(t[3])
+
+def p_listprint(t):
+    'listaprint : listaprint COMA expresion'
+    t[1].append(t[3])
+    t[0] = t[1]
+
+def p_soloprint(t):
+    'listaprint : expresion'
+    t[0] = [t[1]]
 
 def p_funcion(t):
     '''funcion : tipo IDENTIFICADOR PARA PARC LLAVEA LLAVEC'''
     t[0] = Funcion(t[1],t[2])
 
 def p_declaracion(t):
-    '''declaracion : tipo lista_asignaciones PUNTOYCOMA'''
+    'declaracion : tipo lista_asignaciones PUNTOYCOMA'
     t[0] = Asignacion(t[1],t[2])
 
 def p_lista_asignaciones(t):
@@ -245,11 +268,16 @@ def p_una_asignacion(t):
     t[0] = [t[1]]
 
 def p_asignacion(t):
-    'asignacion : IDENTIFICADOR IGUAL expresion'
-    t[0] = (t[1],t[3])
+    '''asignacion : IDENTIFICADOR IGUAL expresion
+                  | IDENTIFICADOR CORCHETEA CORCHETEC IGUAL expresion'''
+    if(t[2] == '='):        
+        t[0] = (t[1],t[3])
+    else:
+        t[0] = (t[1],t[5])
 
 def p_asignacion_none(t):
-    'asignacion : IDENTIFICADOR'
+    '''asignacion : IDENTIFICADOR
+                  | IDENTIFICADOR CORCHETEA CORCHETEC'''
     t[0] = t[1]
 
 def p_tipo(t):
@@ -265,6 +293,10 @@ def p_expNum(t):
     '''expresion : ENTERO
                  | DECIMAL'''
     t[0] = OpNumero(t[1])
+
+def p_expId(t):
+    'expresion : IDENTIFICADOR'
+    t[0] = OpId(t[1])
 
 def p_expCadena(t):
     'expresion : CADENA'

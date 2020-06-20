@@ -14,10 +14,18 @@ class Funcion(Instruccion):
 #CLASE QUE MANEJA UNA ASIGNACION
 class Asignacion(Instruccion):
     #CONSTRUCTOR RECIBE EL TIPO, UNA LISTA DE NOMBRES Y EL VALOR DE UNA VARIABLE
-    def __init__(self, tipo, nombres, valor = None, ambito ='global'):
+    def __init__(self, tipo, nombres, valor = None, size = 0, ambito ='global'):
         self.tipo = tipo
+        self.size = size
         self.nombres = nombres
         self.valor = valor
+
+#CLASE QUE MANEJA EL PRINTF
+class Printf(Instruccion):
+    #CONSTRUCTOR RECIBE UNA LISTA DE VALORES
+    def __init__(self, listavalores):
+        self.listavalores = listavalores
+        
         
 
 #CLASE QUE ENUMERA LOS TIPOS DE OPERACION ARITMETICA
@@ -67,5 +75,12 @@ class OpCadena(Operacion):
     #CONSTRUCTOR RECIBE LA CADENA
     def __init__(self, valor):
         self.valor = valor
+
+#CLASE QUE DEFINE LOS IDENTIFICADORES
+class OpId(Operacion):
+    #CONSTRUCTOR RECIBE EL IDENTIFICADOR
+    def __init__(self, id):
+        self.id = id
+        
         
         

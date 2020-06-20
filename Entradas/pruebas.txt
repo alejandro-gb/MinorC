@@ -8,9 +8,10 @@ int i;
 char c = 'c';
 double d;
 float f;
+char s[] = "Hola";
+printf("%d %c %f %f %s",i,c,d,f,s);
 
 int main()
 {
 
 }
-
