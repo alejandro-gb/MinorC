@@ -194,19 +194,7 @@ class Editor:
     resultado = ''
     tablaGlobal = tablaSimbolos.TablaSimbolos()
     tablaErrores = errores.TablaErrores()
-    analisis_listo = False
-    idcount = 0
-    arbol = None
-    newvar = None
-    debug = False
-    dot = None
-    tipoanalisis = True
-    terminar = False
     temp = 0
-    i = 0    
-    encontre = 'Global'
-    listatemp = []
-    fueop = False
 
     #CONSTRUCTOR
     def __init__(self,principal):
@@ -232,11 +220,6 @@ class Editor:
         self.scrollbar.pack(side=gui.RIGHT, fill=gui.Y)
         self.consola.pack(side=gui.LEFT, fill=gui.BOTH, expand=True)
         self.menubar = BarraDeMenu(self)
-
-    #INCREMENTAR EL CONTADOR
-    def inc(self):
-        self.i += 1
-        return self.i
 
     #CAMBIAR EL TITULO DE LA VENTANA
     def CambiarTitulo(self, name=None):
@@ -354,13 +337,14 @@ class Editor:
         nombre = funcion.nombre + ':'
         self.concatenar(nombre)
 
+    #METODO PARA INTERPRETAR UN PRINTF
     def InterpretarPrintf(self,ins,tabla):
         lista = ins.listavalores
         forma = self.InterpretarOperacion(lista[0],tabla)
         newtipo = forma[0]
         newval = forma[1]
         if(newtipo != 'char'):
-            self.errorSemantico('FORMAT_ERROR','LINEA','Se debe definir el formato de lo que se imprime')
+            self.errorSemantico('FORMAT_ERROR',ins.linea,'Se debe definir el formato de lo que se imprime')
             return
         formato = newval.split('%')
         try:
@@ -380,69 +364,54 @@ class Editor:
                 elif(newtipo == 'char*' and form == 's'):
                     self.concatenar(tprint)
                 else:
-                    self.errorSemantico('FORMAT_ERROR','LINEA','El formato para imprimir no concuerda con el tipo de la variable')
+                    self.errorSemantico('FORMAT_ERROR',ins.linea,'El formato para imprimir no concuerda con el tipo de la variable')
         except IndexError:
-            self.errorSemantico('INDEX_ERROR','LINEA','Se intenta imprimir fuera de rango')
+            self.errorSemantico('INDEX_ERROR',ins.linea,'Se intenta imprimir fuera de rango')
         except:
-            self.errorSemantico('NONETYPE_ERROR','LINEA','Se intenta imprimir un valor que no existe')
+            self.errorSemantico('NONETYPE_ERROR',ins.linea,'Se intenta imprimir un valor que no existe')
      
     #METODO PARA INTERPRETAR UNA ASIGNACION
     def InterpretarDeclaracion(self, ins, tabla, ambito):
         tipo = ins.tipo.lower()
         valor = ins.valor
         for nombre in ins.nombres:
-            temporal = self.newTemp()
-            #SOLO IDENTIFICADOR
-            if(type(nombre) is str):
-                if(tipo == 'int'): valor = 0
-                elif(tipo == 'char'): valor = "''"
-                elif(tipo == 'float'): valor = 0.0
-                elif(tipo == 'double'): valor = 0.0
-                else: valor = 'None'
-                simbolo = tablaSimbolos.Simbolo(nombre, temporal, tipo, valor, ambito)
-                tabla.newSimbolo(simbolo)
-                self.concatenar(temporal + ' = ' + str(valor) + ';')
-            #IDENTIFICADOR VALOR
-            elif(type(nombre) is tuple):
-                identificador = nombre[0]
-                val = self.InterpretarOperacion(nombre[1],tabla)
-                newtipo = val[0]
-                valor = val[1]
-                #self.TraducirOp(temporal)
-                if(self.VerificarTipo(newtipo, tipo)):#VERIFICAR TIPO
-                    if(newtipo == 'char'):
-                        if(len(valor) == 1):
-                            valor = "'" + valor + "'"
-                            simbolo = tablaSimbolos.Simbolo(identificador, temporal, tipo, valor, ambito)
-                            tabla.newSimbolo(simbolo)
-                        else:
-                            self.errorSemantico('TYPE_ERROR','LINEA','Un caracter nada mas')
-                            return
-                    simbolo = tablaSimbolos.Simbolo(identificador, temporal, tipo, valor, ambito)
+            try:
+                temporal = self.newTemp()
+                #SOLO IDENTIFICADOR
+                if(type(nombre) is str):
+                    if(tipo == 'int'): valor = 0
+                    elif(tipo == 'char'): valor = "''"
+                    elif(tipo == 'float'): valor = 0.0
+                    elif(tipo == 'double'): valor = 0.0
+                    else: valor = 'None'
+                    simbolo = tablaSimbolos.Simbolo(nombre, temporal, tipo, valor, ambito)
                     tabla.newSimbolo(simbolo)
-                    #if(self.fueop == False):
                     self.concatenar(temporal + ' = ' + str(valor) + ';')
-                    #else:
-                    #    self.listatemp.clear()
-                    #    self.fueop = False
-                else:
-                    self.errorSemantico('TYPE_ERROR','LINEA','El tipo debe ser el mismo')
+                #IDENTIFICADOR VALOR
+                elif(type(nombre) is tuple):
+                    identificador = nombre[0]
+                    val = self.InterpretarOperacion(nombre[1],tabla)
+                    newtipo = val[0]
+                    valor = val[1]
+                    if(self.VerificarTipo(newtipo, tipo)):#VERIFICAR TIPO
+                        if(newtipo == 'char'):
+                            if(len(valor) == 1):
+                                valor = "'" + valor + "'"
+                                simbolo = tablaSimbolos.Simbolo(identificador, temporal, tipo, valor, ambito)
+                                tabla.newSimbolo(simbolo)
+                            else:
+                                self.errorSemantico('TYPE_ERROR',ins.linea,'Un caracter nada mas')
+                                return
+                        simbolo = tablaSimbolos.Simbolo(identificador, temporal, tipo, valor, ambito)
+                        tabla.newSimbolo(simbolo)
+                        self.concatenar(temporal + ' = ' + str(valor) + ';')
+                    else:
+                        self.errorSemantico('TYPE_ERROR',ins.linea,'El tipo debe ser el mismo')
+            except:
+                self.errorSemantico('TYPE_ERROR',ins.linea,'No se pudo asignar el valor (type)')
 
-    def TraducirOp(self, var):
-        test = ''
-        if self.listatemp:
-            for x in range(0,len(self.listatemp)):
-                elemento = self.listatemp[x]
-                if(x == 0):
-                    trad = str(elemento[0])+' = '+str(elemento[1])+str(elemento[2])+str(elemento[3])+';'
-                else:
-                    trad = str(elemento[0]) + ' = '+str(elemento[1])+str(elemento[2])+str(self.listatemp[x-1][0])+';'
-                self.concatenar(trad)
-                test = str(elemento[0])
-            if(var is not None):
-                self.concatenar(str(var)+' = '+str(test)+';')
-            self.fueop = True
 
+    #METODO PRA INTERPRETAR UNA ASIGNACION
     def InterpretarAsignacion(self, ins, tabla):
         paravar = ins.paravar
         exp = self.InterpretarOperacion(ins.valor,tabla)
@@ -456,13 +425,7 @@ class Editor:
                     simbolo.valor = newval
                     if(newtipo == 'char'):
                         newval = "'" + newval + "'"
-                    #self.TraducirOp(simbolo.temporal)
-                    #if(self.fueop == False):
                     self.concatenar(simbolo.temporal + ' = ' + str(newval) + ';')
-                    #else:
-                    #    self.listatemp.clear()
-                    #    self.fueop = False
-                #ID LISTA = E
                 else:
                     exp = simbolo.temporal
                     for x in ins.dimensiones:
@@ -472,9 +435,9 @@ class Editor:
                     exp += ' = ' + str(newval) + ';'
                     self.concatenar(exp)
             else:
-                self.errorSemantico('TYPE_ERROR','LINEA','El tipo debe ser el mismo')
+                self.errorSemantico('TYPE_ERROR',ins.linea,'El tipo debe ser el mismo')
         else:
-            self.errorSemantico('NONE_ERROR','LINEA','La variable no ha sido declarada')
+            self.errorSemantico('NONE_ERROR',ins.linea,'La variable no ha sido declarada')
 
     #METODO PARA INTERPRETAR UN ARREGLO
     def InterpretarArreglo(self, ins, tabla, ambito):
@@ -533,86 +496,168 @@ class Editor:
             tipo2 = op2[0]
             val2 = op2[1]
             signo = operacion.signo
-            if(op1 != None and op2 != None):
-                if signo == Aritmetica.SUMA:
-                    valor1 = str(val1)
-                    valor2 = str(val2)
-                    if(' ' in valor1):
-                        temp = self.newTemp()
-                        temporal = temp + '=' + valor1 + ';'
-                        self.concatenar(temporal)
-                        valor1 = temp
-                    ntemp = self.newTemp()
-                    valor = valor1 + ' + ' + valor2
-                    self.concatenar(ntemp + ' = ' + valor + ';')
-                    return ('int',ntemp)
-                elif signo == Aritmetica.RESTA:
-                    valor1 = str(val1)
-                    valor2 = str(val2)
-                    if(' ' in valor1):
-                        temp = self.newTemp()
-                        temporal = temp + '=' + valor1 + ';'
-                        self.concatenar(temporal)
-                        valor1 = temp
-                    ntemp = self.newTemp()
-                    valor = valor1 + ' - ' + valor2
-                    self.concatenar(ntemp + ' = ' + valor + ';')
-                    return ('int',ntemp)
-                elif signo == Aritmetica.MULTI:
-                    valor1 = str(val1)
-                    valor2 = str(val2)
-                    if(' ' in valor1):
-                        temp = self.newTemp()
-                        temporal = temp + '=' + valor1 + ';'
-                        self.concatenar(temporal)
-                        valor1 = temp
-                    ntemp = self.newTemp()
-                    valor = valor1 + ' * ' + valor2
-                    self.concatenar(ntemp + ' = ' + valor + ';')
-                    return ('int',ntemp)
-                elif signo == Aritmetica.DIV:
-                    valor1 = str(val1)
-                    valor2 = str(val2)
-                    if(' ' in valor1):
-                        temp = self.newTemp()
-                        temporal = temp + '=' + valor1 + ';'
-                        self.concatenar(temporal)
-                        valor1 = temp
-                    ntemp = self.newTemp()
-                    valor = valor1 + ' / ' + valor2
-                    self.concatenar(ntemp + ' = ' + valor + ';')
-                    return ('int',ntemp)
-                elif signo == Aritmetica.MODULO:
-                    valor1 = str(val1)
-                    valor2 = str(val2)
-                    if(' ' in valor1):
-                        temp = self.newTemp()
-                        temporal = temp + '=' + valor1 + ';'
-                        self.concatenar(temporal)
-                        valor1 = temp
-                    ntemp = self.newTemp()
-                    valor = valor1 + ' % ' + valor2
-                    self.concatenar(ntemp + ' = ' + valor + ';')
-                    return ('int',ntemp)
+            if(self.VerificarTipo(tipo1,tipo2)):
+                if(op1 != None and op2 != None):
+                    if signo == Aritmetica.SUMA:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' + ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    elif signo == Aritmetica.RESTA:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' - ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    elif signo == Aritmetica.MULTI:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' * ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    elif signo == Aritmetica.DIV:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' / ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    elif signo == Aritmetica.MODULO:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' % ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    
+                    elif signo == Relacional.MAYOR:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' > ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    elif signo == Relacional.MENOR:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' < ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    elif signo == Relacional.MAYORIGUAL:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' >= ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    elif signo == Relacional.MENORIGUAL:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' <= ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    elif signo == Relacional.EQUIVALENTE:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' == ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    elif signo == Relacional.DIFERENTE:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' != ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    else:
+                        return None
                 else:
+                    self.errorSemantico('OPERATION_ERROR',operacion.linea,'Operacion invalida (operandos?)')
                     return None
             else:
-                self.errorSemantico('OPERATION_ERROR','LINEA','Operacion invalida (operandos?)')
-                return None        
+                self.errorSemantico('TYPE_ERROR',operacion.linea,'Los tipos deben ser iguales')
+                return None
         elif isinstance(operacion, OpCadena):
             return ('char',operacion.valor)
         elif isinstance(operacion, OpId):
             variable = tabla.getSimbolo(operacion.id)
             if(variable == None):
-                self.errorSemantico('UNDEFINED_VARIABLE','LINEA','La variable no existe')
+                self.errorSemantico('UNDEFINED_VARIABLE',operacion.linea,'La variable no existe')
                 return None
             else:
                 tipo = variable.tipo
                 temporal = variable.temporal
                 return(tipo,temporal)
+        elif isinstance(operacion, OpMenos):
+            exp = self.InterpretarOperacion(operacion.exp,tabla)
+            newtipo = exp[0]
+            newval ='-' + str(exp[1])
+            return(newtipo,newval)
         else:
-            print(type(operacion))
-            print('aqui')
+            self.errorSemantico('OPERATION_ERROR',operacion.linea,'No se pudo hacer ninguna operacion')
+
 
     #METODO PARA ARMAR EL RESULTADO
     def concatenar(self,cadena):
@@ -779,10 +824,10 @@ class Editor:
     def VerTablaSimbolos(self):
         os.system('start '+os.path.realpath('ReporteTs.html'))
         
+    #METODO PARA VER EL REPORTE DE ERRORES
     def VerReporteErrores(self):
         os.system('start '+os.path.realpath('ReporteEr.html'))
 
-        
     #METODO PARA DETENER EL DEBUG
     def stop(self):
         pass
@@ -802,6 +847,7 @@ class Editor:
         self.temp = 0
         self.tablaGlobal.simbolos.clear()
         self.tablaErrores.errores.clear()
+        analizar.lexer.lineno = 0
 
 #--------------------------------------loop para mantener la ejecucion del editor
 if __name__ == "__main__":

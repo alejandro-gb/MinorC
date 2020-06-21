@@ -7,40 +7,45 @@ class Instruccion:
 #CLASE QUE MANEJA LAS FUNCIONES
 class Funcion(Instruccion):
     #CONSTRUCTOR RECIBE EL TIPO Y NOMBRE DE LA FUNCION
-    def __init__(self, tipo, nombre):
+    def __init__(self, tipo, nombre, linea):
         self.tipo = tipo
         self.nombre = nombre
+        self.linea = linea
 
 #CLASE QUE MANEJA UNA DECLARACION
 class Declaracion(Instruccion):
     #CONSTRUCTOR RECIBE EL TIPO, UNA LISTA DE NOMBRES Y EL VALOR DE UNA VARIABLE
-    def __init__(self, tipo, nombres, valor = None):
+    def __init__(self, tipo, nombres, linea, valor = None):
         self.tipo = tipo
         self.nombres = nombres
         self.valor = valor
+        self.linea = linea
 
 #CLASE QUE MANEJA LAS ASIGNACIONES
 class Asignacion(Instruccion):
     #CONSTRUCTOR RECIBE EL ID Y EL VALOR
-    def __init__(self, paravar, valor,dimensiones = None):
+    def __init__(self, paravar, valor, linea, dimensiones = None):
         self.paravar = paravar
         self.dimensiones = dimensiones
         self.valor = valor
+        self.linea = linea
 
 #CLASE QUE MANEJA LOS ARREGLOS
 class Arreglo(Instruccion):
     #CONSTRUCTOR RECIBE EL TIPO, NOMBRE, DIMENSIONES
-    def __init__(self, tipo, nombre, dimensiones):
+    def __init__(self, tipo, nombre, dimensiones,linea):
         self.tipo = tipo
         self.nombre = nombre
         self.dimensiones = dimensiones
+        self.linea = linea
         
 
 #CLASE QUE MANEJA EL PRINTF
 class Printf(Instruccion):
     #CONSTRUCTOR RECIBE UNA LISTA DE VALORES
-    def __init__(self, listavalores):
+    def __init__(self, listavalores,linea):
         self.listavalores = listavalores
+        self.linea = linea
         
 #CLASE QUE ENUMERA LOS TIPOS DE OPERACION ARITMETICA
 class Aritmetica(Enum):
@@ -81,28 +86,38 @@ class Operacion():
 #CLASE QUE DEFINE UNA OPERACION NORMAL
 class OpNormal(Operacion):
     #CONSTRUCTOR RECIBE LOS OPERANDOS Y EL SIGNO
-    def __init__(self, op1, op2, signo):
+    def __init__(self, op1, op2, signo,linea):
         self.op1 = op1
         self.op2 = op2
         self.signo = signo
+        self.linea = linea
         
 #CLASE QUE DEFINE LOS NUMEROS
 class OpNumero(Operacion):
     #CONSTRUCTOR RECIBE EL VALOR DEL NUMERO
-    def __init__(self, valor = 0):
+    def __init__(self, linea, valor = 0):
         self.valor = valor
+        self.linea = linea
 
 #CLASE QUE DEFINE LOS STRINGS
 class OpCadena(Operacion):
     #CONSTRUCTOR RECIBE LA CADENA
-    def __init__(self, valor):
+    def __init__(self, valor, linea):
         self.valor = valor
+        self.linea = linea
 
 #CLASE QUE DEFINE LOS IDENTIFICADORES
 class OpId(Operacion):
     #CONSTRUCTOR RECIBE EL IDENTIFICADOR
-    def __init__(self, id):
+    def __init__(self, id, linea):
         self.id = id
-        
+        self.linea = linea
+
+#CLASE QUE MANEJA -E
+class OpMenos(Operacion):
+    #CONSTRUCTOR RECIBE EL VALOR A NEGAR
+    def __init__(self,exp,linea):
+        self.exp = exp
+        self.linea = linea
         
         

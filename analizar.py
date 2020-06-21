@@ -129,8 +129,8 @@ t_MENOS             = r'\-'
 t_POR               = r'\*'
 t_BARRA             = r'\/'
 t_MOD               = r'%'
-t_MAYOR             = r'>'
-t_MENOR             = r'<'
+t_MAYOR             = r'\>'
+t_MENOR             = r'\<'
 t_PICO              = r'\^'
 t_BARRAOR           = r'\|'   
 t_INTERROGACION     = r'\?'
@@ -186,7 +186,7 @@ def t_newline(t):
 #METODO PARA RECONOCER UN ERROR
 def t_error(t):
     desc = 'El caracter: ' + t.value[0] + ' no es valido'
-    nuevo = errores.Error('LEXICO',desc, t.lineno, t.lexpos)
+    nuevo = errores.Error('LEXICO',desc, t.lexer.lineno, t.lexpos)
     main.Editor.tablaErrores.newError(nuevo)
     t.lexer.skip(1)
 
@@ -197,10 +197,11 @@ lexer = lex.lex()
 
 #PRECEDENCIA
 precedence = (
-    #OPERADOR COMA
-    #ASIGNACIONES
-    #TERNARIO
-    ('left','ADMIRACION','AND','OR'),
+    ('left','COMA'),
+    ('right','ASSIGN_SHIFTR','ASSIGN_SHIFTL','ASSING_MAS','ASSING_MENOS','ASSING_POR','ASSING_DIV','ASSING_MOD','ASSING_AND','ASSING_OR','ASSING_XOR'),
+    ('right','INTERROGACION'),
+    ('left','OR'),
+    ('left','AND'),
     ('left','BARRAOR'), 
     ('left','PICO'),
     ('left','ANPERSAND'),
@@ -208,11 +209,10 @@ precedence = (
     ('left','MAYOR','MAYORIGUAL','MENOR','MENORIGUAL'),
     ('left','SHIFTL','SHIFTR'),
     ('left','MAS','MENOS'),
-    ('left','POR','BARRA','MOD')
-    #SIZEOF
+    ('left','POR','BARRA','MOD'),
     #CASTEOS
-    #OPERADOR UNARIO
-    #FUNCIONES
+    ('right','UMENOS','SIZEOF'),
+    ('left','PARA')#CORCHETEA, PUNTO,PUNTERO,INCRECMENTO,DECREMENTO POSTFIJO
 )
 
 #---------------------------------ANALIZADOR SINTACTICO
@@ -241,7 +241,7 @@ def p_instruccion(t):
 
 def p_prinf(t):
     'printf : PRINTF PARA listaprint PARC PUNTOYCOMA'
-    t[0] = Printf(t[3])
+    t[0] = Printf(t[3],t.lexer.lineno)
 
 def p_listprint(t):
     'listaprint : listaprint COMA expresion'
@@ -254,19 +254,19 @@ def p_soloprint(t):
 
 def p_funcion(t):
     '''funcion : tipo IDENTIFICADOR PARA PARC LLAVEA LLAVEC'''
-    t[0] = Funcion(t[1],t[2])
+    t[0] = Funcion(t[1],t[2],t.lexer.lineno)
 
 def p_declaracion(t):
     'declaracion : tipo lista_impasignaciones PUNTOYCOMA'
-    t[0] = Declaracion(t[1],t[2])
+    t[0] = Declaracion(t[1],t[2],t.lexer.lineno)
 
 def p_arreglo(t):
     'arreglo : tipo IDENTIFICADOR lista_dimension PUNTOYCOMA'
-    t[0] = Arreglo(t[1],t[2],t[3])
+    t[0] = Arreglo(t[1],t[2],t[3],t.lexer.lineno)
 
 def p_arreglostr(t):
     'arreglo : tipo IDENTIFICADOR CORCHETEA CORCHETEC IGUAL expresion PUNTOYCOMA'
-    t[0] = Arreglo(t[1],t[2],t[6])
+    t[0] = Arreglo(t[1],t[2],t[6],t.lexer.lineno)
 
 def p_lista_impasignaciones(t):
     'lista_impasignaciones : lista_impasignaciones COMA implict_asignacion'
@@ -302,9 +302,9 @@ def p_asignacion(t):
     '''asignacion : IDENTIFICADOR IGUAL expresion PUNTOYCOMA
                   | IDENTIFICADOR lista_dimension IGUAL expresion PUNTOYCOMA'''
     if(t[2] == '='):
-        t[0] = Asignacion(t[1],t[3])
+        t[0] = Asignacion(t[1], t[3],t.lexer.lineno)
     else:
-        t[0] = Asignacion(t[1],t[4],t[2])
+        t[0] = Asignacion(t[1], t[4],t.lexer.lineno,t[2])
 
 def p_tipo(t):
     '''tipo : INT
@@ -333,62 +333,69 @@ def p_exprexion(t):
                  | expresion ANPERSAND expresion
                  | expresion BARRAOR expresion
                  | expresion SHIFTR expresion
-                 | expresion SHIFTL expresion'''
+                 | expresion SHIFTL expresion
+                 | PARA expresion PARC'''
     if t[2] == '+' :
-        t[0] = OpNormal(t[1],t[3],Aritmetica.SUMA)
+        t[0] = OpNormal(t[1],t[3],Aritmetica.SUMA,t.lexer.lineno)
     elif t[2] == '-' :
-        t[0] = OpNormal(t[1],t[3],Aritmetica.RESTA)
+        t[0] = OpNormal(t[1],t[3],Aritmetica.RESTA,t.lexer.lineno)
     elif t[2] == '*' :
-        t[0] = OpNormal(t[1],t[3],Aritmetica.MULTI)
+        t[0] = OpNormal(t[1],t[3],Aritmetica.MULTI,t.lexer.lineno)
     elif t[2] == '/' :
-        t[0] = OpNormal(t[1],t[3],Aritmetica.DIV)
+        t[0] = OpNormal(t[1],t[3],Aritmetica.DIV,t.lexer.lineno)
     elif t[2] == '%' :
-        t[0] = OpNormal(t[1],t[3],Aritmetica.MODULO)
+        t[0] = OpNormal(t[1],t[3],Aritmetica.MODULO,t.lexer.lineno)
     elif t[2] == '<' :
-        t[0] = OpNormal(t[1],t[3],Relacional.MENOR)
+        t[0] = OpNormal(t[1],t[3],Relacional.MENOR,t.lexer.lineno)
     elif t[2] == '>' :
-        t[0] = OpNormal(t[1],t[3],Relacional.MAYOR)
+        t[0] = OpNormal(t[1],t[3],Relacional.MAYOR,t.lexer.lineno)
     elif t[2] == '<=' :
-        t[0] = OpNormal(t[1],t[3],Relacional.MENORQUE)
+        t[0] = OpNormal(t[1],t[3],Relacional.MENORIGUAL,t.lexer.lineno)
     elif t[2] == '>=' :
-        t[0] = OpNormal(t[1],t[3],Relacional.MAYORQUE)
+        t[0] = OpNormal(t[1],t[3],Relacional.MAYORIGUAL,t.lexer.lineno)
     elif t[2] == '==' :
-        t[0] = OpNormal(t[1],t[3],Relacional.EQUIVALENTE)
+        t[0] = OpNormal(t[1],t[3],Relacional.EQUIVALENTE,t.lexer.lineno)
     elif t[2] == '!=' :
-        t[0] = OpNormal(t[1],t[3],Relacional.DIFERENTE)
+        t[0] = OpNormal(t[1],t[3],Relacional.DIFERENTE,t.lexer.lineno)
     elif t[2] == '&&' :
-        t[0] = OpNormal(t[1],t[3],Logica.AND)
+        t[0] = OpNormal(t[1],t[3],Logica.AND,t.lexer.lineno)
     elif t[2] == '||' :
-        t[0] = OpNormal(t[1],t[3],Logica.OR)
+        t[0] = OpNormal(t[1],t[3],Logica.OR,t.lexer.lineno)
     elif t[2] == '&' :
-        t[0] = OpNormal(t[1],t[3],Bits.BITAND)
+        t[0] = OpNormal(t[1],t[3],Bits.BITAND,t.lexer.lineno)
     elif t[2] == '|' :
-        t[0] = OpNormal(t[1],t[3],Bits.BITOR)
+        t[0] = OpNormal(t[1],t[3],Bits.BITOR,t.lexer.lineno)
     elif t[2] == '^' :
-        t[0] = OpNormal(t[1],t[3],Bits.BITXOR)
+        t[0] = OpNormal(t[1],t[3],Bits.BITXOR,t.lexer.lineno)
     elif t[2] == '<<' :
-        t[0] = OpNormal(t[1],t[3],Bits.BITSHL)
+        t[0] = OpNormal(t[1],t[3],Bits.BITSHL,t.lexer.lineno)
     elif t[2] == '>>' :
-        t[0] = OpNormal(t[1],t[3],Bits.BITSHR)
+        t[0] = OpNormal(t[1],t[3],Bits.BITSHR,t.lexer.lineno)
+    else:
+        t[0] = t[2]
 
 def p_expNum(t):
     '''expresion : ENTERO
                  | DECIMAL'''
-    t[0] = OpNumero(t[1])
+    t[0] = OpNumero(t.lexer.lineno, t[1])
+
+def p_menosExp(t):
+    'expresion : MENOS expresion %prec UMENOS'
+    t[0] = OpMenos(t[2],t.lexer.lineno)
 
 def p_expId(t):
     'expresion : IDENTIFICADOR'
-    t[0] = OpId(t[1])
+    t[0] = OpId(t[1],t.lexer.lineno)
 
 def p_expCadena(t):
     'expresion : CADENA'
-    t[0] = OpCadena(t[1])
+    t[0] = OpCadena(t[1],t.lexer.lineno)
 
 #METODO PARA MANEJAR LOS ERRORES SINTACTICOS
 def p_error(t):
     if t:
         desc = 'El token: ' + str(t.value) + ' no se esperaba'
-        nuevo = errores.Error('SINTACTICO',desc,t.lineno,t.lexpos)
+        nuevo = errores.Error('SINTACTICO',desc,t.lexer.lineno+1,t.lexpos)
         main.Editor.tablaErrores.newError(nuevo)
         parser.errok()
     else:
