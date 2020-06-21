@@ -42,8 +42,6 @@ class Printf(Instruccion):
     def __init__(self, listavalores):
         self.listavalores = listavalores
         
-        
-
 #CLASE QUE ENUMERA LOS TIPOS DE OPERACION ARITMETICA
 class Aritmetica(Enum):
     SUMA = 1

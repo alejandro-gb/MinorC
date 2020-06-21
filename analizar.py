@@ -73,7 +73,7 @@ tokens = [
     'MAS',
     'MENOS',
     'POR',
-    'DIV',
+    'BARRA',
     'MOD',
     'MAYOR',
     'MENOR',
@@ -125,9 +125,9 @@ t_ANPERSAND         = r'&'
 t_ADMIRACION        = r'!'
 t_NOTBIT            = r'~'
 t_MAS               = r'\+'
-t_MENOS             = r'-'
+t_MENOS             = r'\-'
 t_POR               = r'\*'
-t_DIV               = r'/'
+t_BARRA             = r'\/'
 t_MOD               = r'%'
 t_MAYOR             = r'>'
 t_MENOR             = r'<'
@@ -208,7 +208,7 @@ precedence = (
     ('left','MAYOR','MAYORIGUAL','MENOR','MENORIGUAL'),
     ('left','SHIFTL','SHIFTR'),
     ('left','MAS','MENOS'),
-    ('left','POR','DIV','MOD')
+    ('left','POR','BARRA','MOD')
     #SIZEOF
     #CASTEOS
     #OPERADOR UNARIO
@@ -319,7 +319,7 @@ def p_exprexion(t):
     '''expresion : expresion MAS expresion
                  | expresion MENOS expresion
                  | expresion POR expresion
-                 | expresion DIV expresion
+                 | expresion BARRA expresion
                  | expresion MOD expresion
                  | expresion MAYOR expresion
                  | expresion MENOR expresion
