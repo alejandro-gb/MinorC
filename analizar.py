@@ -5,26 +5,19 @@ reservadas = {
     'break':'BREAK',
     'case':'CASE',
     'char':'CHAR',
-    'signed':'SIGNED',
-    'const':'CONST',
     'continue':'CONTINUE',
     'default':'DEFAULT',
     'do':'DO',
     'double':'DOUBLE',
     'else':'ELSE',
-    'static':'STATIC',
     'float':'FLOAT',
     'for':'FOR',
-    'typedef':'TYPEDEF',
-    'auto':'AUTO',
     'goto':'GOTO',
     'if':'IF',
     'int':'INT',
-    'enum':'ENUM',
     'return':'RETURN',
     'struct':'STRUCT',
     'sizeof':'SIZEOF',
-    'extern':'EXTERN',
     'switch':'SWITCH',
     'void':'VOID',
     'while':'WHILE',
@@ -247,8 +240,19 @@ def p_instruccion(t):
                    | goto
                    | dowhile
                    | if
-                   | switch'''
+                   | switch
+                   | for
+                   | nula
+                   | return'''
     t[0] = t[1]
+
+def p_nula(t):
+    'nula : PUNTOYCOMA'
+    pass
+
+def p_return(t):
+    'return : RETURN expresion PUNTOYCOMA'
+    t[0] = Return(t[2],t.lexer.lineno)
 
 def p_prinf(t):
     'printf : PRINTF PARA listaprint PARC PUNTOYCOMA'
@@ -396,6 +400,14 @@ def p_default(t):
     'default : DEFAULT DOSPUNTOS instrucciones'
     t[0] = t[3]
 
+def p_for(t):
+    'for : FOR PARA inicializacion expresion PUNTOYCOMA expresion PARC LLAVEA instrucciones LLAVEC'
+    t[0] = For(t[3],t[4],t[6],t[9],t.lexer.lineno)
+
+def p_inicializar(t):
+    '''inicializacion : declaracion
+                      | asignacion'''
+    t[0] = t[1]
 #------------------------------EXPRESIONES
 def p_exprexion(t):
     '''expresion : expresion MAS expresion

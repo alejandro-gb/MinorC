@@ -16,10 +16,9 @@ class Funcion(Instruccion):
 #CLASE QUE MANEJA UNA DECLARACION
 class Declaracion(Instruccion):
     #CONSTRUCTOR RECIBE EL TIPO, UNA LISTA DE NOMBRES Y EL VALOR DE UNA VARIABLE
-    def __init__(self, tipo, nombres, linea, valor = None):
+    def __init__(self, tipo, nombres, linea):
         self.tipo = tipo
         self.nombres = nombres
-        self.valor = valor
         self.linea = linea
 
 #CLASE QUE MANEJA LAS ASIGNACIONES
@@ -90,6 +89,23 @@ class Switch(Instruccion):
     #CONSTRUCTOR RECIBE LA EXPRESION, LISTA DE CASOS
     def __init__(self, expresion, listacasos, linea):
         self.listacasos = listacasos
+        self.expresion = expresion
+        self.linea = linea
+
+#CLASE QUE MANEJA LOS CICLOS FOR
+class For(Instruccion):
+    #CONSTRUCTOR RECIBE LA INICIALIZACION, LA CONDICION , EL CAMBIO, LA LISTA DE INSTRUCCIONES
+    def __init__(self, inicial,condicion,cambio,ins,linea):
+        self.inicial = inicial
+        self.condicion = condicion
+        self.cambio = cambio
+        self.ins = ins
+        self.linea = linea
+
+#CLASE PARA MANEJAR LOS RETURNS
+class Return(Instruccion):
+    #CONSTRUCTOR RECIBE LA EXPRESION Y LA LINEA
+    def __init__(self,expresion,linea):
         self.expresion = expresion
         self.linea = linea
 

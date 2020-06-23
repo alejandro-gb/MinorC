@@ -340,6 +340,7 @@ class Editor:
         #except:
         #    messagebox.showerror('ERROR','NO SE INTERPRETO')
 
+    #METODO PARA INTERPRETAR INSTRUCCIONES INTERNAS
     def InterpretarIns(self,lista,tabla,nombre):
         for x in lista:
             if isinstance(x,Declaracion) : self.InterpretarDeclaracion(x, tabla,nombre)
@@ -352,6 +353,10 @@ class Editor:
             elif isinstance(x,Goto) : self.InterpretarGoto(x,tabla,nombre)
             elif isinstance(x,If) : self.InterpretarIf(x,tabla,nombre)
             elif isinstance(x,Switch) : self.InterpretarSwitch(x,tabla,nombre)
+            elif isinstance(x,Return) : self.InterpretarReturn(x,tabla)
+            elif isinstance(x,For) : 
+                self.concatenar('')
+                self.InterpretarFor(x,tabla,nombre)
             elif isinstance(x,Funcion): self.errorSemantico('CORE_DUMPED',x.linea,'No se pueden hacer funciones anidadas')
             
     #METODO PARA INTERPRETAR UNA FUNCION
@@ -390,6 +395,39 @@ class Editor:
         self.InterpretarIns(ins,tabla,regreso)
         self.concatenar('goto ' + regreso + ';')
         self.concatenar(falso + ':')
+    
+    #METODOD PARA INTERPRETAR UN RETURN
+    def InterpretarReturn(self,ret,tabla):
+        exp = ret.expresion
+        print(exp)
+
+    #METODO PARA INTERPRETAR UN FOR
+    def InterpretarFor(self, ciclo, tabla, ambito):
+        inicio = ciclo.inicial
+        condicion = ciclo.condicion
+        cambio = ciclo.cambio
+        lista = ciclo.ins
+        nombre = self.newTag('for')
+        verdadero = nombre + 'V'
+        falso = nombre + 'F'
+        actualizar = nombre + 'A'
+        
+        if isinstance(inicio, Declaracion):
+            self.InterpretarDeclaracion(inicio,tabla,nombre)
+        elif isinstance(inicio, Asignacion):
+            self.InterpretarAsignacion(inicio,tabla)
+        self.concatenar(nombre + ':')
+        resultado = self.InterpretarOperacion(condicion,tabla)
+        cond = resultado[1]
+        self.concatenar('if(' + cond + ')' + ' goto ' + verdadero + ';')
+        self.concatenar('goto ' + falso + ';')
+        self.concatenar(actualizar + ':')
+        self.InterpretarOperacion(cambio,tabla)
+        self.concatenar('goto '+ nombre +';')
+        self.concatenar(verdadero +':')
+        self.InterpretarIns(lista,tabla,nombre)
+        self.concatenar('goto '+ actualizar +';')        
+        self.concatenar(falso +':')
         
     #METODO PARA INTERPRETAR UN IF
     def InterpretarIf(self, ciclo, tabla, ambito):
@@ -436,9 +474,9 @@ class Editor:
                     self.concatenar(fin + ':')
         
         if(sielse == False):
-            self.concatenar(fin + ':')
-        else:
-            self.concatenar(falso + ':')
+            self.concatenar(falso + ':')#fin o falso
+        #else:
+        #    self.concatenar(fin + ':')#fin o falso
 
     #METODO PARA INTERPRETAR LOS SWITCHS
     def InterpretarSwitch(self, ciclo, tabla, ambito):
@@ -537,7 +575,7 @@ class Editor:
                 else:
                     self.errorSemantico('FORMAT_ERROR',ins.linea,'El formato para imprimir no concuerda con el tipo de la variable')
             tprint = 'print(\'' + str(newval) + '\');'
-            if(tprint != ''):
+            if(str(newval) != ''):
                 self.concatenar(tprint)
                 self.concatenar('print("\\n");')
             if(toconcat != ''):
@@ -550,7 +588,7 @@ class Editor:
     #METODO PARA INTERPRETAR UNA ASIGNACION
     def InterpretarDeclaracion(self, ins, tabla, ambito):
         tipo = ins.tipo.lower()
-        valor = ins.valor
+        valor = ''
         for nombre in ins.nombres:
             try:
                 if((type(nombre) is str and self.VerificarAmbito(nombre,ambito,tabla)) or (self.VerificarAmbito(nombre[0],ambito,tabla))):
@@ -574,8 +612,8 @@ class Editor:
                         if(self.VerificarTipo(newtipo, tipo)):#VERIFICAR TIPO
                             if(newtipo == 'char'):
                                 if(len(valor) == 1):
-                                    simbolo = tablaSimbolos.Simbolo(identificador, temporal, tipo, valor, ambito)
                                     valor = "'" + valor + "'"
+                                    simbolo = tablaSimbolos.Simbolo(identificador, temporal, tipo, valor, ambito)
                                     tabla.newSimbolo(simbolo)
                                     self.concatenar(temporal + ' = ' + str(valor) + ';')
                                     return
@@ -963,8 +1001,9 @@ class Editor:
             newval = str(exp[1])
             asignar = newval + ' = ' + newval + ' + 1;'
             self.concatenar(asignar)
-            newasig = var + ' = ' + newval + ';'
-            self.concatenar(newasig)
+            if var is not None:    
+                newasig = var + ' = ' + newval + ';'
+                self.concatenar(newasig)
             return(newtipo , True)
         elif isinstance(operacion, OpDec):
             exp = self.InterpretarOperacion(operacion.exp,tabla)
@@ -972,15 +1011,17 @@ class Editor:
             newval = str(exp[1])
             asignar = newval + ' = ' + newval + ' - 1;'
             self.concatenar(asignar)
-            newasig = var + ' = ' + newval + ';'
-            self.concatenar(newasig)
+            if var is not None:    
+                newasig = var + ' = ' + newval + ';'
+                self.concatenar(newasig)
             return(newtipo , True)
         elif isinstance(operacion, OpPostInc):
             exp = self.InterpretarOperacion(operacion.exp,tabla)
             newtipo = exp[0]
             newval = str(exp[1])
-            asignar = var + ' = ' + newval + ';'
-            self.concatenar(asignar)
+            if var is not None:
+                asignar = var + ' = ' + newval + ';'
+                self.concatenar(asignar)
             newasig = newval + ' = ' + newval + ' + 1;'
             self.concatenar(newasig)
             return(newtipo , True)
@@ -988,8 +1029,9 @@ class Editor:
             exp = self.InterpretarOperacion(operacion.exp,tabla)
             newtipo = exp[0]
             newval = str(exp[1])
-            asignar = var + ' = ' + newval + ';'
-            self.concatenar(asignar)
+            if var is not None:
+                asignar = var + ' = ' + newval + ';'
+                self.concatenar(asignar)
             newasig = newval + ' = ' + newval + ' - 1;'
             self.concatenar(newasig)
             return(newtipo, True)
