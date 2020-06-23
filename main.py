@@ -396,7 +396,7 @@ class Editor:
         condicion = ciclo.condicion
         listaif = ciclo.listaif
         listaelse = ciclo.listaelse
-
+        tablaLocal = tablaSimbolos.TablaSimbolos(tabla.simbolos)
         nombre = self.newTag('if')
         verdadero = nombre + 'V'
         falso = nombre + 'F'
@@ -408,7 +408,7 @@ class Editor:
         self.concatenar('if(' + cond + ') goto ' + verdadero + ';')
         self.concatenar('goto ' + falso + ';')
         self.concatenar(verdadero + ':')
-        self.InterpretarIns(listaif,tabla,nombre)
+        self.InterpretarIns(listaif,tablaLocal,nombre)
         if(listaelse is not None):
             for x in listaelse:
                 if(type(x) is tuple):
@@ -425,14 +425,14 @@ class Editor:
                     self.concatenar('if(' + condx + ') goto ' + verdaderox + ';')
                     self.concatenar('goto ' + falso + ';')
                     self.concatenar(verdaderox + ':')
-                    self.InterpretarIns(listax, tabla, nombre)
+                    self.InterpretarIns(listax, tablaLocal, nombre)
                     self.concatenar('goto ' + fin + ';')
                 else:
                     sielse = True
                     if(len(listaelse) == 1):
                         self.concatenar('goto ' + fin + ';')
                     self.concatenar(falso + ':')
-                    self.InterpretarIns(x,tabla,nombre)
+                    self.InterpretarIns(x,tablaLocal,nombre)
                     self.concatenar(fin + ':')
         
         if(sielse == False):
@@ -481,7 +481,6 @@ class Editor:
         if not haydef:
             self.concatenar(tag+str(scontador-1)+':')
         self.concatenar(fin + ':')
-
 
     #METODO PARA INTERPRETAR UN DOWHILE
     def InterpretarDowhile(self,ciclo,tabla,ambito):
@@ -569,7 +568,7 @@ class Editor:
                     #IDENTIFICADOR VALOR
                     elif(type(nombre) is tuple):
                         identificador = nombre[0]
-                        val = self.InterpretarOperacion(nombre[1],tabla)
+                        val = self.InterpretarOperacion(nombre[1],tabla,temporal)
                         newtipo = val[0]
                         valor = val[1]
                         if(self.VerificarTipo(newtipo, tipo)):#VERIFICAR TIPO
@@ -596,18 +595,20 @@ class Editor:
     #METODO PRA INTERPRETAR UNA ASIGNACION
     def InterpretarAsignacion(self, ins, tabla):
         paravar = ins.paravar
-        exp = self.InterpretarOperacion(ins.valor,tabla)
+        simbolo = tabla.getSimbolo(paravar)
+        paratemp = simbolo.temporal
+        exp = self.InterpretarOperacion(ins.valor,tabla,paratemp)
         newtipo = exp[0]
         newval = exp[1]
-        simbolo = tabla.getSimbolo(paravar)
         if(simbolo is not None):
             if(self.VerificarTipo(newtipo,simbolo.tipo)):
                 #ID = E;
                 if(ins.dimensiones is None):
-                    simbolo.valor = newval
-                    if(newtipo == 'char'):
-                        newval = "'" + newval + "'"
-                    self.concatenar(simbolo.temporal + ' = ' + str(newval) + ';')
+                    if(type(newval) is not bool):
+                        simbolo.valor = newval
+                        if(newtipo == 'char'):
+                            newval = "'" + newval + "'"
+                        self.concatenar(simbolo.temporal + ' = ' + str(newval) + ';')
                 else:
                     exp = simbolo.temporal
                     for x in ins.dimensiones:
@@ -673,7 +674,7 @@ class Editor:
         return False
 
     #METODO PARA INTERPRETAR UNA OPERACION 
-    def InterpretarOperacion(self, operacion, tabla):
+    def InterpretarOperacion(self, operacion, tabla, var = None):
         if isinstance(operacion, OpNumero):
             tipo = ''
             valor = operacion.valor
@@ -753,7 +754,7 @@ class Editor:
                         self.concatenar(ntemp + ' = ' + valor + ';')
                         return ('int',ntemp)
                     
-                    #RELACIONES
+                    #RELACIONALES
                     elif signo == Relacional.MAYOR:
                         valor1 = str(val1)
                         valor2 = str(val2)
@@ -826,6 +827,95 @@ class Editor:
                         valor = valor1 + ' != ' + valor2
                         self.concatenar(ntemp + ' = ' + valor + ';')
                         return ('int',ntemp)
+                    
+                    #LOGICOS
+                    elif signo == Logica.AND:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' && ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    elif signo == Logica.OR:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' || ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+
+                    #BITS
+                    elif signo == Bits.BITAND:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' & ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    elif signo == Bits.BITOR:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' | ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    elif signo == Bits.BITXOR:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' ^ ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    elif signo == Bits.BITSHL:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' << ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    elif signo == Bits.BITSHR:
+                        valor1 = str(val1)
+                        valor2 = str(val2)
+                        if(' ' in valor1):
+                            temp = self.newTemp()
+                            temporal = temp + '=' + valor1 + ';'
+                            self.concatenar(temporal)
+                            valor1 = temp
+                        ntemp = self.newTemp()
+                        valor = valor1 + ' >> ' + valor2
+                        self.concatenar(ntemp + ' = ' + valor + ';')
+                        return ('int',ntemp)
+                    
                     else:
                         return None
                 else:
@@ -857,6 +947,52 @@ class Editor:
             newtipo = exp[0]
             newval ='-' + str(exp[1])
             return(newtipo,newval)
+        elif isinstance(operacion, OpNotbit):
+            exp = self.InterpretarOperacion(operacion.exp,tabla)
+            newtipo = exp[0]
+            newval = '~'+str(exp[1])
+            return(newtipo,newval)
+        elif isinstance(operacion, OpNotlog):
+            exp = self.InterpretarOperacion(operacion.exp,tabla)
+            newtipo = exp[0]
+            newval = '!'+str(exp[1])
+            return(newtipo,newval)
+        elif isinstance(operacion, OpInc):
+            exp = self.InterpretarOperacion(operacion.exp,tabla)
+            newtipo = exp[0]
+            newval = str(exp[1])
+            asignar = newval + ' = ' + newval + ' + 1;'
+            self.concatenar(asignar)
+            newasig = var + ' = ' + newval + ';'
+            self.concatenar(newasig)
+            return(newtipo , True)
+        elif isinstance(operacion, OpDec):
+            exp = self.InterpretarOperacion(operacion.exp,tabla)
+            newtipo = exp[0]
+            newval = str(exp[1])
+            asignar = newval + ' = ' + newval + ' - 1;'
+            self.concatenar(asignar)
+            newasig = var + ' = ' + newval + ';'
+            self.concatenar(newasig)
+            return(newtipo , True)
+        elif isinstance(operacion, OpPostInc):
+            exp = self.InterpretarOperacion(operacion.exp,tabla)
+            newtipo = exp[0]
+            newval = str(exp[1])
+            asignar = var + ' = ' + newval + ';'
+            self.concatenar(asignar)
+            newasig = newval + ' = ' + newval + ' + 1;'
+            self.concatenar(newasig)
+            return(newtipo , True)
+        elif isinstance(operacion, OpPostDec):
+            exp = self.InterpretarOperacion(operacion.exp,tabla)
+            newtipo = exp[0]
+            newval = str(exp[1])
+            asignar = var + ' = ' + newval + ';'
+            self.concatenar(asignar)
+            newasig = newval + ' = ' + newval + ' - 1;'
+            self.concatenar(newasig)
+            return(newtipo, True)
         else:
             self.errorSemantico('OPERATION_ERROR',operacion.linea,'No se pudo hacer ninguna operacion')
 

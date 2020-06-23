@@ -165,5 +165,46 @@ class OpMenos(Operacion):
     def __init__(self,exp,linea):
         self.exp = exp
         self.linea = linea
+
+#CLASE QUE MANEJA ~E
+class OpNotbit(Operacion):
+    #CONSTRUCTOR RECIBE EL VALOR A NEGAR
+    def __init__(self,exp,linea):
+        self.exp = exp
+        self.linea = linea        
         
-        
+#CLASE QUE MANEJA !E
+class OpNotlog(Operacion):
+    #CONSTRUCTOR RECIBE EL VALOR A NEGAR
+    def __init__(self,exp,linea):
+        self.exp = exp
+        self.linea = linea  
+
+#CLASE QUE MANEJA ++E
+class OpInc(Operacion):
+    #CONSTRUCTOR RECIBE EL VALOR A NEGAR
+    def __init__(self,exp,linea):
+        self.exp = exp
+        self.linea = linea  
+
+#CLASE QUE MANEJA --E
+class OpDec(Operacion):
+    #CONSTRUCTOR RECIBE EL VALOR A NEGAR
+    def __init__(self,exp,linea):
+        self.exp = exp
+        self.linea = linea  
+
+
+#CLASE QUE MANEJA E++
+class OpPostInc(Operacion):
+    #CONSTRUCTOR RECIBE EL VALOR A NEGAR
+    def __init__(self,exp,linea):
+        self.exp = exp
+        self.linea = linea  
+
+#CLASE QUE MANEJA E--
+class OpPostDec(Operacion):
+    #CONSTRUCTOR RECIBE EL VALOR A NEGAR
+    def __init__(self,exp,linea):
+        self.exp = exp
+        self.linea = linea 

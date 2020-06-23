@@ -103,7 +103,7 @@ t_ASSING_XOR        = r'^='
 t_SHIFTR            = r'>>'
 t_SHIFTL            = r'<<'
 t_INCREMENTO        = r'\+\+'
-t_DECREMENTO        = r'--'
+t_DECREMENTO        = r'\-\-'
 t_PUNTERO           = r'->'
 t_AND               = r'&&'
 t_OR                = r'\|\|'
@@ -122,9 +122,9 @@ t_PARC              = r'\)'
 t_CORCHETEA         = r'\['
 t_CORCHETEC         = r'\]'
 t_PUNTO             = r'.'
-t_ANPERSAND         = r'&'
-t_ADMIRACION        = r'!'
-t_NOTBIT            = r'~'
+t_ANPERSAND         = r'\&'
+t_ADMIRACION        = r'\!'
+t_NOTBIT            = r'\~'
 t_MAS               = r'\+'
 t_MENOS             = r'\-'
 t_POR               = r'\*'
@@ -206,19 +206,18 @@ precedence = (
     ('left','COMA'),
     ('right','ASSIGN_SHIFTR','ASSIGN_SHIFTL','ASSING_MAS','ASSING_MENOS','ASSING_POR','ASSING_DIV','ASSING_MOD','ASSING_AND','ASSING_OR','ASSING_XOR'),
     ('right','INTERROGACION'),
-    ('left','OR'),
-    ('left','AND'),
-    ('left','BARRAOR'), 
-    ('left','PICO'),
-    ('left','ANPERSAND'),
+    ('left','OR'),#logico
+    ('left','AND'),#logico
+    ('left','BARRAOR'),#bits
+    ('left','PICO'),#bits
+    ('left','ANPERSAND'),#bits
     ('left','EQUIVALENTE','DIFERENTE'),
     ('left','MAYOR','MAYORIGUAL','MENOR','MENORIGUAL'),
     ('left','SHIFTL','SHIFTR'),
     ('left','MAS','MENOS'),
     ('left','POR','BARRA','MOD'),
-    #CASTEOS
-    ('right','UMENOS','SIZEOF'),
-    ('left','PARA')#CORCHETEA, PUNTO,PUNTERO,INCRECMENTO,DECREMENTO POSTFIJO
+    ('right','UMENOS','SIZEOF','INCREMENTO','DECREMENTO','ADMIRACION','NOTBIT'),#PUNTEROS & Y *
+    ('left','PARA','PARC','CORCHETEA','CORCHETEC','PUNTO','UINC','UDEC')#POSTINC POSTDEC
 )
 
 #---------------------------------ANALIZADOR SINTACTICO
@@ -465,6 +464,30 @@ def p_expNum(t):
 def p_menosExp(t):
     'expresion : MENOS expresion %prec UMENOS'
     t[0] = OpMenos(t[2],t.lexer.lineno)
+
+def p_notbit(t):
+    'expresion : NOTBIT expresion'
+    t[0] = OpNotbit(t[2],t.lexer.lineno)
+
+def p_notlog(t):
+    'expresion : ADMIRACION expresion'
+    t[0] = OpNotlog(t[2],t.lexer.lineno)
+
+def p_oppreinc(t):
+    'expresion : INCREMENTO expresion'
+    t[0] = OpInc(t[2],t.lexer.lineno)
+
+def p_oppredec(t):
+    'expresion : DECREMENTO expresion'
+    t[0] = OpDec(t[2],t.lexer.lineno)
+
+def p_oppostinc(t):
+    'expresion : expresion INCREMENTO %prec UINC'
+    t[0] = OpPostInc(t[1],t.lexer.lineno)
+
+def p_oppostdec(t):
+    'expresion : expresion DECREMENTO %prec UDEC'
+    t[0] = OpPostDec(t[1],t.lexer.lineno)
 
 def p_expId(t):
     'expresion : IDENTIFICADOR'
