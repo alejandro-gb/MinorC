@@ -6,11 +6,12 @@ class Instruccion:
 
 #CLASE QUE MANEJA LAS FUNCIONES
 class Funcion(Instruccion):
-    #CONSTRUCTOR RECIBE EL TIPO Y NOMBRE DE LA FUNCION
-    def __init__(self, tipo, nombre, linea):
+    #CONSTRUCTOR RECIBE EL TIPO NOMBRE DE LA FUNCION Y LA LISTA DE INSTRCCIONES
+    def __init__(self, tipo, nombre, lista, linea):
         self.tipo = tipo
         self.nombre = nombre
         self.linea = linea
+        self.lista = lista
 
 #CLASE QUE MANEJA UNA DECLARACION
 class Declaracion(Instruccion):
@@ -39,7 +40,35 @@ class Arreglo(Instruccion):
         self.dimensiones = dimensiones
         self.linea = linea
         
+#CLASE QUE MANEJA LOS CICLOS WHILE
+class While(Instruccion):
+    #CONSTRUCTOR RECIBE CONDICION Y LA LISTA DE INSTRUCCIONES
+    def __init__(self, condicion, lista, linea):
+        self.condicion = condicion
+        self.lista = lista
+        self.linea = linea
 
+#CLASE QUE MANEJA LOS DOWHILE
+class Dowhile(Instruccion):
+    def __init__(self,condicion,lista, linea):
+        self.condicion = condicion
+        self.lista = lista
+        self.linea = linea
+
+#CLASE QUE MANEJA LAS ETIQUETAS
+class Etiqueta(Instruccion):
+    #CONSTRUCTOR RECIBE EL NOMBRE DE LA ETIQUETA
+    def __init__(self,nombre,linea):
+        self.nombre = nombre
+        self.linea = linea
+
+#CLASE QUE MANEJA LOS INCONDICIONALES
+class Goto(Instruccion):
+    #CONSTRUCTOR RECIBE EL NOMBRE DE LA ETIQUETA A LA QUE SALTA
+    def __init__(self,nombre,linea):
+        self.nombre = nombre
+        self.linea = linea
+        
 #CLASE QUE MANEJA EL PRINTF
 class Printf(Instruccion):
     #CONSTRUCTOR RECIBE UNA LISTA DE VALORES
@@ -47,6 +76,23 @@ class Printf(Instruccion):
         self.listavalores = listavalores
         self.linea = linea
         
+#CLASE QUE MANEJA LOS IFS 
+class If(Instruccion):
+    #CONSTRUCTOR RECIBE LA CONDICION Y LA LISTA DE INSTRUCCIONES DEL IF Y EL ELSE
+    def __init__(self,condicion, listaif,linea, listaelse = None):
+        self.condicion = condicion
+        self.listaif = listaif
+        self.listaelse = listaelse
+        self.linea = linea
+
+#CLASE QUE MANEJA LOS SWITCH
+class Switch(Instruccion):
+    #CONSTRUCTOR RECIBE LA EXPRESION, LISTA DE CASOS
+    def __init__(self, expresion, listacasos, linea):
+        self.listacasos = listacasos
+        self.expresion = expresion
+        self.linea = linea
+
 #CLASE QUE ENUMERA LOS TIPOS DE OPERACION ARITMETICA
 class Aritmetica(Enum):
     SUMA = 1

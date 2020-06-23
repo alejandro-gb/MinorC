@@ -35,6 +35,7 @@ reservadas = {
 #LISTA DE TOKENS
 tokens = [
     'CADENA',
+    'CARACTER',
     'ASSIGN_SHIFTR',
     'ASSIGN_SHIFTL',
     'ASSING_MAS',
@@ -128,7 +129,7 @@ t_MAS               = r'\+'
 t_MENOS             = r'\-'
 t_POR               = r'\*'
 t_BARRA             = r'\/'
-t_MOD               = r'%'
+t_MOD               = r'\%'
 t_MAYOR             = r'\>'
 t_MENOR             = r'\<'
 t_PICO              = r'\^'
@@ -161,7 +162,12 @@ def t_IDENTIFICADOR(t):
 
 #METODO PARA ACEPTAR UNA CADENA QUITANDO LAS COMILLAS DOBLES
 def t_CADENA(t):
-    r"(\"|').*?(\"|')"
+    r'".*?"'
+    t.value = t.value[1:-1]
+    return t 
+
+def t_CARACTER(t):
+    r"'.'"
     t.value = t.value[1:-1]
     return t 
 
@@ -236,7 +242,13 @@ def p_instruccion(t):
                    | declaracion
                    | printf
                    | arreglo
-                   | asignacion'''
+                   | asignacion
+                   | while
+                   | etiqueta
+                   | goto
+                   | dowhile
+                   | if
+                   | switch'''
     t[0] = t[1]
 
 def p_prinf(t):
@@ -253,8 +265,8 @@ def p_soloprint(t):
     t[0] = [t[1]]
 
 def p_funcion(t):
-    '''funcion : tipo IDENTIFICADOR PARA PARC LLAVEA LLAVEC'''
-    t[0] = Funcion(t[1],t[2],t.lexer.lineno)
+    '''funcion : tipo IDENTIFICADOR PARA PARC LLAVEA instrucciones LLAVEC'''
+    t[0] = Funcion(t[1],t[2],t[6],t.lexer.lineno)
 
 def p_declaracion(t):
     'declaracion : tipo lista_impasignaciones PUNTOYCOMA'
@@ -313,6 +325,77 @@ def p_tipo(t):
             | FLOAT
             | VOID'''
     t[0] = t[1]
+
+def p_while(t):
+    'while : WHILE PARA expresion PARC LLAVEA instrucciones LLAVEC'
+    t[0] = While(t[3],t[6],t.lexer.lineno)
+
+def p_dowhile(t):
+    'dowhile : DO LLAVEA instrucciones LLAVEC WHILE PARA expresion PARC PUNTOYCOMA'
+    t[0] = Dowhile(t[7],t[3],t.lexer.lineno)
+
+def p_etiqueta(t):
+    'etiqueta : IDENTIFICADOR DOSPUNTOS'
+    t[0] = Etiqueta(t[1],t.lexer.lineno)
+
+def p_goto(t):
+    'goto : GOTO IDENTIFICADOR PUNTOYCOMA'
+    t[0] = Goto(t[2],t.lexer.lineno)
+
+def p_soloif(t):
+    '''if : IF PARA expresion PARC LLAVEA instrucciones LLAVEC'''
+    t[0] = If(t[3],t[6],t.lexer.lineno)
+
+def p_ifelses(t):
+    'if : IF PARA expresion PARC LLAVEA instrucciones LLAVEC listaifelse'
+    t[0] = If(t[3],t[6],t.lexer.lineno,t[8]) 
+
+def p_listaifelse(t):
+    'listaifelse : listaifelse ifelse'
+    t[1].append(t[2])
+    t[0] = t[1]
+
+def p_listasoloifelse(t):
+    'listaifelse : ifelse'
+    t[0] = [t[1]]
+
+def p_ifelse(t):
+    '''ifelse : ELSE IF PARA expresion PARC LLAVEA instrucciones LLAVEC
+              | ELSE LLAVEA instrucciones LLAVEC'''
+    if(t[2] == '{'):
+        t[0] = t[3]
+    elif(t[3] == '('):
+        t[0] = (t[4],t[7])
+
+def p_switch(t):
+    'switch : SWITCH PARA expresion PARC LLAVEA listacasos LLAVEC'
+    t[0] = Switch(t[3],t[6],t.lexer.lineno)
+
+def p_listacasos(t):
+    'listacasos : listacasos tipocaso'
+    t[1].append(t[2])
+    t[0] = t[1]
+
+def p_listauncaso(t):
+    'listacasos : tipocaso'
+    t[0] = [t[1]]
+
+def p_tipocaso(t):
+    '''tipocaso : caso
+                | default'''
+    t[0] = t[1]
+
+def p_caso(t):
+    'caso : CASE expresion DOSPUNTOS instrucciones'
+    t[0] = (t[2],t[4],False)
+    
+def p_casobreak(t):
+    'caso : CASE expresion DOSPUNTOS instrucciones BREAK PUNTOYCOMA'
+    t[0] = (t[2],t[4],True)
+
+def p_default(t):
+    'default : DEFAULT DOSPUNTOS instrucciones'
+    t[0] = t[3]
 
 #------------------------------EXPRESIONES
 def p_exprexion(t):
@@ -388,7 +471,8 @@ def p_expId(t):
     t[0] = OpId(t[1],t.lexer.lineno)
 
 def p_expCadena(t):
-    'expresion : CADENA'
+    '''expresion : CADENA
+                 | CARACTER'''
     t[0] = OpCadena(t[1],t.lexer.lineno)
 
 #METODO PARA MANEJAR LOS ERRORES SINTACTICOS
@@ -403,8 +487,6 @@ def p_error(t):
         nuevo = errores.Error('SINTACTICO',desc,'EOF','EOF')
         main.Editor.tablaErrores.newError(nuevo)
         
-
-
 #------------------------------------------IMPORTS
 import ply.yacc as yacc
 parser = yacc.yacc()

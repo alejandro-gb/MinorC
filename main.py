@@ -195,6 +195,7 @@ class Editor:
     tablaGlobal = tablaSimbolos.TablaSimbolos()
     tablaErrores = errores.TablaErrores()
     temp = 0
+    numtag = 0
 
     #CONSTRUCTOR
     def __init__(self,principal):
@@ -307,6 +308,8 @@ class Editor:
         self.ReporteTablaSimbolos()
         self.ReporteErrores()
         self.consola.insert(gui.END,self.resultado)
+        if(len(self.tablaErrores.errores) != 0):
+            self.VerReporteErrores()
 
     #METODO PARA INTERPRETAR LAS INSTRUCCIONES
     def Interpretar(self, instrucciones, tabla):
@@ -319,23 +322,179 @@ class Editor:
                         instrucciones.remove(x)
             
             #BUSCAR INSTRUCCIONES GLOBALES
+
             for x in instrucciones:
                 if isinstance(x,Declaracion) : self.InterpretarDeclaracion(x, tabla, 'global')
                 elif isinstance(x,Printf) : self.InterpretarPrintf(x,tabla)
                 elif isinstance(x,Arreglo) : self.InterpretarArreglo(x,tabla,'global')
                 elif isinstance(x,Asignacion) : self.InterpretarAsignacion(x,tabla)
+                elif isinstance(x,Etiqueta) : self.InterpretarEtiqueta(x,tabla,'global')
+                elif isinstance(x,Goto) : self.InterpretarGoto(x,tabla,'global')
 
             #BUSCAR LAS DEMAS FUNCIONES
             for x in instrucciones:
-                if isinstance(x,Funcion) : self.InterpretarFuncion(x, tabla)
+                if isinstance(x,Funcion) :  self.InterpretarFuncion(x, tabla)
+
+            self.concatenar('exit;')
+
         #except:
         #    messagebox.showerror('ERROR','NO SE INTERPRETO')
-        
+
+    def InterpretarIns(self,lista,tabla,nombre):
+        for x in lista:
+            if isinstance(x,Declaracion) : self.InterpretarDeclaracion(x, tabla,nombre)
+            elif isinstance(x,Printf) : self.InterpretarPrintf(x,tabla)
+            elif isinstance(x,Arreglo) : self.InterpretarArreglo(x,tabla,nombre)
+            elif isinstance(x,Asignacion) : self.InterpretarAsignacion(x,tabla)
+            elif isinstance(x,While) : self.InterpretarWhile(x,tabla,nombre)
+            elif isinstance(x,Dowhile) : self.InterpretarDowhile(x,tabla,nombre)
+            elif isinstance(x,Etiqueta) : self.InterpretarEtiqueta(x,tabla,nombre)
+            elif isinstance(x,Goto) : self.InterpretarGoto(x,tabla,nombre)
+            elif isinstance(x,If) : self.InterpretarIf(x,tabla,nombre)
+            elif isinstance(x,Switch) : self.InterpretarSwitch(x,tabla,nombre)
+            elif isinstance(x,Funcion): self.errorSemantico('CORE_DUMPED',x.linea,'No se pueden hacer funciones anidadas')
+            
     #METODO PARA INTERPRETAR UNA FUNCION
     def InterpretarFuncion(self, funcion, tabla):
         tipo = funcion.tipo
-        nombre = funcion.nombre + ':'
-        self.concatenar(nombre)
+        nombre = funcion.nombre
+        ins = funcion.lista
+        simbolo = tablaSimbolos.Simbolo(nombre, '',tipo, '', 'global')
+        tabla.newSimbolo(simbolo)
+        self.concatenar(nombre + ':')
+        self.InterpretarIns(ins,tabla,nombre)
+
+    #METODO PARA INTERPRETAR UNA ETIQUETA
+    def InterpretarEtiqueta(self,ins,tabla,ambito):
+        nomTag = ins.nombre
+        self.concatenar(nomTag + ':')
+
+    #METODO PARA INTERPRETAR UN SALTO GOTO
+    def InterpretarGoto(self,ins,tabla,ambito):
+        nomTag = ins.nombre
+        self.concatenar('goto '+nomTag + ';')
+
+    #METODO PARA INTERPRETAR UN WHILE
+    def InterpretarWhile(self,ciclo,tabla,ambito):
+        condicion = ciclo.condicion
+        ins = ciclo.lista
+        regreso = self.newTag('while')
+        verdadero = regreso + 'V'
+        falso = regreso + 'F'
+        self.concatenar(regreso+':')
+        resultado = self.InterpretarOperacion(condicion,tabla)
+        cond = resultado[1]
+        self.concatenar('if(' + cond + ')' + ' goto ' + verdadero + ';')
+        self.concatenar('goto ' + falso + ';')
+        self.concatenar(verdadero + ':')
+        self.InterpretarIns(ins,tabla,regreso)
+        self.concatenar('goto ' + regreso + ';')
+        self.concatenar(falso + ':')
+        
+    #METODO PARA INTERPRETAR UN IF
+    def InterpretarIf(self, ciclo, tabla, ambito):
+        condicion = ciclo.condicion
+        listaif = ciclo.listaif
+        listaelse = ciclo.listaelse
+
+        nombre = self.newTag('if')
+        verdadero = nombre + 'V'
+        falso = nombre + 'F'
+        fin = nombre +'end'
+        sielse = False
+
+        resultado = self.InterpretarOperacion(condicion,tabla)
+        cond = resultado[1]
+        self.concatenar('if(' + cond + ') goto ' + verdadero + ';')
+        self.concatenar('goto ' + falso + ';')
+        self.concatenar(verdadero + ':')
+        self.InterpretarIns(listaif,tabla,nombre)
+        if(listaelse is not None):
+            for x in listaelse:
+                if(type(x) is tuple):
+                    condicionx = x[0]
+                    listax = x[1]
+                    self.concatenar('goto ' + fin + ';')
+                    nombrex = self.newTag('elseif')
+                    verdaderox = nombrex + 'V'
+                    falsox = nombrex + 'F'
+                    self.concatenar(falso + ':')
+                    falso = falsox
+                    resultadox = self.InterpretarOperacion(condicionx,tabla)
+                    condx = resultadox[1]
+                    self.concatenar('if(' + condx + ') goto ' + verdaderox + ';')
+                    self.concatenar('goto ' + falso + ';')
+                    self.concatenar(verdaderox + ':')
+                    self.InterpretarIns(listax, tabla, nombre)
+                    self.concatenar('goto ' + fin + ';')
+                else:
+                    sielse = True
+                    if(len(listaelse) == 1):
+                        self.concatenar('goto ' + fin + ';')
+                    self.concatenar(falso + ':')
+                    self.InterpretarIns(x,tabla,nombre)
+                    self.concatenar(fin + ':')
+        
+        if(sielse == False):
+            self.concatenar(fin + ':')
+        else:
+            self.concatenar(falso + ':')
+
+    #METODO PARA INTERPRETAR LOS SWITCHS
+    def InterpretarSwitch(self, ciclo, tabla, ambito):
+        exp = self.InterpretarOperacion(ciclo.expresion,tabla)
+        exptipo = exp[0]
+        expval = exp[1]
+        lista = ciclo.listacasos   
+        tag = self.newTag('switch')
+        fin = tag + 'Fin'
+        scontador = 0
+        haydef = False
+        for caso in lista:
+            #CASO NORMAL
+            if(type(caso) is tuple):
+                aevaluar =self.InterpretarOperacion(caso[0],tabla)
+                restipo = aevaluar[0]
+                resvalor = aevaluar[1]
+                if self.VerificarTipo(exptipo,restipo):
+                    if (restipo == 'char'):
+                        resvalor = "'"+resvalor+"'"
+                    cuerpo = caso[1]
+                    conbreak = caso[2]
+                    namecase = tag+str(scontador)
+                    if(scontador != 0):
+                        previa = tag+str(scontador-1)
+                        self.concatenar(previa+':')
+                    scontador += 1
+                    self.concatenar('if(' + expval + ' != ' + resvalor + ') goto ' + namecase + ';')
+                    self.InterpretarIns(cuerpo,tabla,tag)
+                    if conbreak:
+                        self.concatenar('goto ' + fin + ';')
+                else:
+                    self.errorSemantico('TYPE_ERROR',ciclo.linea,'El tipo a evaluar debe ser igual que evaluado')
+            #DEFAULT
+            else:
+                haydef = True
+                tagdef = tag + str(scontador-1)
+                self.concatenar(tagdef + ':')
+                self.InterpretarIns(caso,tabla,tag)
+        if not haydef:
+            self.concatenar(tag+str(scontador-1)+':')
+        self.concatenar(fin + ':')
+
+
+    #METODO PARA INTERPRETAR UN DOWHILE
+    def InterpretarDowhile(self,ciclo,tabla,ambito):
+        condicion = ciclo.condicion
+        ins = ciclo.lista
+        regreso = self.newTag('dowhile')
+        falso = regreso + 'F'
+        self.concatenar(regreso + ':')
+        self.InterpretarIns(ins,tabla,regreso)
+        resultado = self.InterpretarOperacion(condicion,tabla)
+        cond = resultado[1]
+        self.concatenar('if(' + cond + ')' + ' goto ' + regreso + ';')
+        self.concatenar(falso + ':')
 
     #METODO PARA INTERPRETAR UN PRINTF
     def InterpretarPrintf(self,ins,tabla):
@@ -343,28 +502,47 @@ class Editor:
         forma = self.InterpretarOperacion(lista[0],tabla)
         newtipo = forma[0]
         newval = forma[1]
+        toconcat = ''
         if(newtipo != 'char'):
             self.errorSemantico('FORMAT_ERROR',ins.linea,'Se debe definir el formato de lo que se imprime')
             return
-        formato = newval.split('%')
         try:
             for i in range(1,len(lista)):
                 resultado = self.InterpretarOperacion(lista[i],tabla)
-                newtipo = resultado[0]
-                newval = resultado[1]
-                form = formato[i].replace(' ','')
-                tprint = 'print(' + str(newval) + ');'
-                if(newtipo == 'int' and (form == 'd' or form == 'i')):
-                    self.concatenar(tprint)
-                elif((newtipo == 'float' or newtipo =='double') and form == 'f'):
-                    self.concatenar(tprint)
-                elif(newtipo == 'char' and form == 'c'):
-                    tprint = "print('" + str(newval) + "');"
-                    self.concatenar(tprint)
-                elif(newtipo == 'char*' and form == 's'):
-                    self.concatenar(tprint)
+                restipo = resultado[0]
+                resval = resultado[1]
+                tprint = 'print(' + str(resval) + ');'
+                if(restipo == 'int' and ('%d' in newval or '%i' in newval)):
+                    if('%d' in newval):
+                        newval = newval.replace('%d','',1)
+                    elif('%i' in newval):
+                        newval = newval.replace('%i','',1)
+                    toconcat += tprint+'\n'
+                    toconcat += 'print("\\n");'+'\n'
+                elif((restipo == 'float' or restipo =='double') and '%f' in newval):
+                    toconcat += tprint+'\n'
+                    toconcat += 'print("\\n");'+'\n'
+                    newval = newval.replace('%f','',1)
+                elif(restipo == 'char' and '%c' in newval):
+                    if('$' in str(resval)):
+                        tprint = "print(" + str(resval) + ");"
+                    else:
+                        tprint = "print('" + str(resval) + "');"
+                    toconcat += tprint + '\n'
+                    toconcat += 'print("\\n");'+'\n'
+                    newval = newval.replace('%c','',1)
+                elif(restipo == 'char*' and '%s' in newval):
+                    toconcat += tprint+'\n'
+                    toconcat += 'print("\\n");'+'\n'
+                    newval = newval.replace('%s','',1)
                 else:
                     self.errorSemantico('FORMAT_ERROR',ins.linea,'El formato para imprimir no concuerda con el tipo de la variable')
+            tprint = 'print(\'' + str(newval) + '\');'
+            if(tprint != ''):
+                self.concatenar(tprint)
+                self.concatenar('print("\\n");')
+            if(toconcat != ''):
+                self.concatenar(toconcat)
         except IndexError:
             self.errorSemantico('INDEX_ERROR',ins.linea,'Se intenta imprimir fuera de rango')
         except:
@@ -376,40 +554,44 @@ class Editor:
         valor = ins.valor
         for nombre in ins.nombres:
             try:
-                temporal = self.newTemp()
-                #SOLO IDENTIFICADOR
-                if(type(nombre) is str):
-                    if(tipo == 'int'): valor = 0
-                    elif(tipo == 'char'): valor = "''"
-                    elif(tipo == 'float'): valor = 0.0
-                    elif(tipo == 'double'): valor = 0.0
-                    else: valor = 'None'
-                    simbolo = tablaSimbolos.Simbolo(nombre, temporal, tipo, valor, ambito)
-                    tabla.newSimbolo(simbolo)
-                    self.concatenar(temporal + ' = ' + str(valor) + ';')
-                #IDENTIFICADOR VALOR
-                elif(type(nombre) is tuple):
-                    identificador = nombre[0]
-                    val = self.InterpretarOperacion(nombre[1],tabla)
-                    newtipo = val[0]
-                    valor = val[1]
-                    if(self.VerificarTipo(newtipo, tipo)):#VERIFICAR TIPO
-                        if(newtipo == 'char'):
-                            if(len(valor) == 1):
-                                valor = "'" + valor + "'"
-                                simbolo = tablaSimbolos.Simbolo(identificador, temporal, tipo, valor, ambito)
-                                tabla.newSimbolo(simbolo)
-                            else:
-                                self.errorSemantico('TYPE_ERROR',ins.linea,'Un caracter nada mas')
-                                return
-                        simbolo = tablaSimbolos.Simbolo(identificador, temporal, tipo, valor, ambito)
+                if((type(nombre) is str and self.VerificarAmbito(nombre,ambito,tabla)) or (self.VerificarAmbito(nombre[0],ambito,tabla))):
+                    temporal = self.newTemp()
+                    #SOLO IDENTIFICADOR
+                    if(type(nombre) is str):
+                        if(tipo == 'int'): valor = 0
+                        elif(tipo == 'char'): valor = "''"
+                        elif(tipo == 'float'): valor = 0.0
+                        elif(tipo == 'double'): valor = 0.0
+                        else: valor = 'None'
+                        simbolo = tablaSimbolos.Simbolo(nombre, temporal, tipo, valor, ambito)
                         tabla.newSimbolo(simbolo)
                         self.concatenar(temporal + ' = ' + str(valor) + ';')
-                    else:
-                        self.errorSemantico('TYPE_ERROR',ins.linea,'El tipo debe ser el mismo')
+                    #IDENTIFICADOR VALOR
+                    elif(type(nombre) is tuple):
+                        identificador = nombre[0]
+                        val = self.InterpretarOperacion(nombre[1],tabla)
+                        newtipo = val[0]
+                        valor = val[1]
+                        if(self.VerificarTipo(newtipo, tipo)):#VERIFICAR TIPO
+                            if(newtipo == 'char'):
+                                if(len(valor) == 1):
+                                    simbolo = tablaSimbolos.Simbolo(identificador, temporal, tipo, valor, ambito)
+                                    valor = "'" + valor + "'"
+                                    tabla.newSimbolo(simbolo)
+                                    self.concatenar(temporal + ' = ' + str(valor) + ';')
+                                    return
+                                else:
+                                    self.errorSemantico('TYPE_ERROR',ins.linea,'Un caracter nada mas')
+                                    return
+                            simbolo = tablaSimbolos.Simbolo(identificador, temporal, tipo, valor, ambito)
+                            tabla.newSimbolo(simbolo)
+                            self.concatenar(temporal + ' = ' + str(valor) + ';')
+                        else:
+                            self.errorSemantico('TYPE_ERROR',ins.linea,'El tipo debe ser el mismo')
+                else:
+                    self.errorSemantico('VARIABLE_ERROR',ins.linea,'La variable ya ha sido declarada anteriormente')
             except:
                 self.errorSemantico('TYPE_ERROR',ins.linea,'No se pudo asignar el valor (type)')
-
 
     #METODO PRA INTERPRETAR UNA ASIGNACION
     def InterpretarAsignacion(self, ins, tabla):
@@ -445,27 +627,30 @@ class Editor:
         nombre = ins.nombre
         dimensiones = ins.dimensiones
         valor = ''
-        temporal = self.newTemp()
-        #TIPO ID LISTADIMENSIONES ;
-        if(type(dimensiones) is list):
-            numdim = len(dimensiones)
-            dims = []
-            for x in dimensiones:
-                val = self.InterpretarOperacion(x, tabla)
-                newtipo = val[0]
-                newval = val[1]
-                dims.append(newval)
-            simbolo = tablaSimbolos.Simbolo(nombre, temporal, tipo, dims, ambito, numdim)
-            tabla.newSimbolo(simbolo)
-            self.concatenar(temporal + '=' + 'array();')
-        #TIPO ID [] = EXPRESION ;
+        if self.VerificarAmbito(nombre,ambito,tabla):
+            temporal = self.newTemp()
+            #TIPO ID LISTADIMENSIONES ;
+            if(type(dimensiones) is list):
+                numdim = len(dimensiones)
+                dims = []
+                for x in dimensiones:
+                    val = self.InterpretarOperacion(x, tabla)
+                    newtipo = val[0]
+                    newval = val[1]
+                    dims.append(newval)
+                simbolo = tablaSimbolos.Simbolo(nombre, temporal, tipo, dims, ambito, numdim)
+                tabla.newSimbolo(simbolo)
+                self.concatenar(temporal + '=' + 'array();')
+            #TIPO ID [] = EXPRESION ;
+            else:
+                resultado = self.InterpretarOperacion(dimensiones,tabla)
+                valor = resultado[1]
+                tipo = 'char*'
+                simbolo = tablaSimbolos.Simbolo(nombre,temporal,tipo,valor,ambito)
+                tabla.newSimbolo(simbolo)
+                self.concatenar(temporal + '=' + "'" + valor + "';")
         else:
-            resultado = self.InterpretarOperacion(dimensiones,tabla)
-            valor = resultado[1]
-            tipo = 'char*'
-            simbolo = tablaSimbolos.Simbolo(nombre,temporal,tipo,valor,ambito)
-            tabla.newSimbolo(simbolo)
-            self.concatenar(temporal + '=' + "'" + valor + "';")
+            self.errorSemantico('VARIABLE_ERROR',ins.linea,'La variable ya ha sido declarada anteriormente')
 
     #METODO PARA VERIFICAR SI LOS TIPOS SON IGUALES
     def VerificarTipo(self, tipo1, tipo2):
@@ -477,6 +662,15 @@ class Editor:
             return True
         else:
             return False
+
+    def VerificarAmbito(self,id,ambito,tabla):
+        simbolo = tabla.getSimbolo(id)
+        if(simbolo is None):
+            return True
+        else:
+            if(simbolo.ambito != ambito):
+                return True
+        return False
 
     #METODO PARA INTERPRETAR UNA OPERACION 
     def InterpretarOperacion(self, operacion, tabla):
@@ -559,6 +753,7 @@ class Editor:
                         self.concatenar(ntemp + ' = ' + valor + ';')
                         return ('int',ntemp)
                     
+                    #RELACIONES
                     elif signo == Relacional.MAYOR:
                         valor1 = str(val1)
                         valor2 = str(val2)
@@ -640,7 +835,14 @@ class Editor:
                 self.errorSemantico('TYPE_ERROR',operacion.linea,'Los tipos deben ser iguales')
                 return None
         elif isinstance(operacion, OpCadena):
-            return ('char',operacion.valor)
+            cadena = operacion.valor
+            if('\\n' in cadena):
+                cadena = cadena.replace('\\n','')
+            if("\\'" in cadena):
+                cadena = cadena.replace("\\'","'")
+            if("\\\\" in cadena):
+                cadena = cadena.replace("\\\\","\\")
+            return ('char',cadena)
         elif isinstance(operacion, OpId):
             variable = tabla.getSimbolo(operacion.id)
             if(variable == None):
@@ -658,7 +860,6 @@ class Editor:
         else:
             self.errorSemantico('OPERATION_ERROR',operacion.linea,'No se pudo hacer ninguna operacion')
 
-
     #METODO PARA ARMAR EL RESULTADO
     def concatenar(self,cadena):
         self.resultado = self.resultado + cadena + '\n'
@@ -672,9 +873,15 @@ class Editor:
 
     #METODO PARA CREAR UN NUEVO TEMPORAL
     def newTemp(self):
-        new = '$t'+str(self.temp)
+        new = '$t' +str(self.temp)
         self.temp += 1
         return new
+
+    #METODO PARA DEVOLVER UN NUMERO JUNTO A UNA ETIQUETA
+    def newTag(self,texto):
+        new = texto + str(self.numtag)
+        self.numtag += 1
+        return new 
 
     #METODO PARA AVANZAR EN EL DEBUG
     def SiguientePaso(self):
@@ -845,6 +1052,7 @@ class Editor:
     def reset(self):
         self.resultado = ''
         self.temp = 0
+        self.numtag = 0
         self.tablaGlobal.simbolos.clear()
         self.tablaErrores.errores.clear()
         analizar.lexer.lineno = 0
