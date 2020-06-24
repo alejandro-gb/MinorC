@@ -110,6 +110,18 @@ class Return(Instruccion):
         self.expresion = expresion
         self.linea = linea
 
+#CLASE PARA MANEJAR LOS BREAKS
+class Break(Instruccion):
+    #CONSTRUCTOR RECIBE LA LINEA
+    def __init__(self,linea):
+        self.linea = linea
+
+#CLASE PARA MANEJAR LOS CONTINUE
+class Continue(Instruccion):
+    #CONSTRUCTOR RECIBE LA LINEA
+    def __init__(self,linea):
+        self.linea = linea
+
 #CLASE QUE ENUMERA LOS TIPOS DE OPERACION ARITMETICA
 class Aritmetica(Enum):
     SUMA = 1

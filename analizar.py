@@ -43,7 +43,6 @@ tokens = [
     'SHIFTL',
     'INCREMENTO',
     'DECREMENTO',
-    'PUNTERO',
     'AND',
     'OR',
     'MENORIGUAL',
@@ -97,7 +96,6 @@ t_SHIFTR            = r'>>'
 t_SHIFTL            = r'<<'
 t_INCREMENTO        = r'\+\+'
 t_DECREMENTO        = r'\-\-'
-t_PUNTERO           = r'->'
 t_AND               = r'&&'
 t_OR                = r'\|\|'
 t_MENORIGUAL        = r'<='
@@ -242,7 +240,10 @@ def p_instruccion(t):
                    | switch
                    | for
                    | nula
-                   | return'''
+                   | return
+                   | break
+                   | continue
+                   | expresion'''
     t[0] = t[1]
 
 def p_nula(t):
@@ -252,6 +253,14 @@ def p_nula(t):
 def p_return(t):
     'return : RETURN expresion PUNTOYCOMA'
     t[0] = Return(t[2],t.lexer.lineno)
+
+def p_break(t):
+    'break : BREAK PUNTOYCOMA'
+    t[0] = Break(t.lexer.lineno)
+
+def p_continue(t):
+    'continue : CONTINUE PUNTOYCOMA'
+    t[0] = Continue(t.lexer.lineno)
 
 def p_prinf(t):
     'printf : PRINTF PARA listaprint PARC PUNTOYCOMA'
@@ -403,11 +412,7 @@ def p_tipocaso(t):
 
 def p_caso(t):
     'caso : CASE expresion DOSPUNTOS instrucciones'
-    t[0] = (t[2],t[4],False)
-    
-def p_casobreak(t):
-    'caso : CASE expresion DOSPUNTOS instrucciones BREAK PUNTOYCOMA'
-    t[0] = (t[2],t[4],True)
+    t[0] = (t[2],t[4])
 
 def p_default(t):
     'default : DEFAULT DOSPUNTOS instrucciones'

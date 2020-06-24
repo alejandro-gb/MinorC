@@ -197,10 +197,12 @@ class Editor:
     temp = 0
     numtag = 0
     stack = []
+    stackLoop = []
+    stackContinue = []
 
     #CONSTRUCTOR
     def __init__(self,principal):
-        principal.title("Sin titulo - Augus")
+        principal.title("Sin titulo - MinorC")
         principal.geometry("600x500")
         fuente = ("Arial",13)
         self.principal = principal
@@ -355,6 +357,9 @@ class Editor:
             elif isinstance(x,If) : self.InterpretarIf(x,tabla,nombre)
             elif isinstance(x,Switch) : self.InterpretarSwitch(x,tabla,nombre)
             elif isinstance(x,Return) : self.InterpretarReturn(x,tabla)
+            elif isinstance(x,Break) : self.InterpretarBreak(x,tabla)
+            elif isinstance(x,Continue) : self.InterpretarContinue(x,tabla)
+            elif isinstance(x,Operacion) : self.InterpretarOperacion(x,tabla)
             elif isinstance(x,For) : 
                 self.concatenar('')
                 self.InterpretarFor(x,tabla,nombre)
@@ -384,9 +389,14 @@ class Editor:
     def InterpretarWhile(self,ciclo,tabla,ambito):
         condicion = ciclo.condicion
         ins = ciclo.lista
-        regreso = self.newTag('while')
-        verdadero = regreso + 'V'
-        falso = regreso + 'F'
+        
+        regreso = self.newTag('while')  #ETIQUETA INICIO
+        verdadero = regreso + 'V'       #ETIQUETA VERDADERA
+        falso = regreso + 'F'           #ETIQUETA FALSA
+        
+        self.stackLoop.append(falso)
+        self.stackContinue.append(regreso)
+
         self.concatenar(regreso+':')
         resultado = self.InterpretarOperacion(condicion,tabla)
         cond = resultado[1]
@@ -396,11 +406,23 @@ class Editor:
         self.InterpretarIns(ins,tabla,regreso)
         self.concatenar('goto ' + regreso + ';')
         self.concatenar(falso + ':')
+        
+        self.stackLoop.pop()
+        self.stackContinue.pop()
     
     #METODOD PARA INTERPRETAR UN RETURN
     def InterpretarReturn(self,ret,tabla):
         exp = ret.expresion
-        print(exp)
+
+    #METODOD PARA INTERPRETAR UN RETURN
+    def InterpretarBreak(self,ret,tabla):
+        fin = self.stackLoop[-1]
+        self.concatenar('goto ' + fin + ';')
+
+    #METODOD PARA INTERPRETAR UN RETURN
+    def InterpretarContinue(self,ret,tabla):
+        inicio = self.stackContinue[-1]
+        self.concatenar('goto ' + inicio + ';')
 
     #METODO PARA INTERPRETAR UN FOR
     def InterpretarFor(self, ciclo, tabla, ambito):
@@ -408,11 +430,15 @@ class Editor:
         condicion = ciclo.condicion
         cambio = ciclo.cambio
         lista = ciclo.ins
-        nombre = self.newTag('for')
-        verdadero = nombre + 'V'
-        falso = nombre + 'F'
-        actualizar = nombre + 'A'
+
+        nombre = self.newTag('for') #ETIQUETA INICIO
+        verdadero = nombre + 'V'    #ETIQUETA VERDADERA
+        falso = nombre + 'F'        #ETIQUETA FALSA
+        actualizar = nombre + 'A'   #ETIQUETA ACTUALIZAR
         
+        self.stackLoop.append(falso)
+        self.stackContinue.append(actualizar)
+
         if isinstance(inicio, Declaracion):
             self.InterpretarDeclaracion(inicio,tabla,nombre)
         elif isinstance(inicio, Asignacion):
@@ -429,6 +455,9 @@ class Editor:
         self.InterpretarIns(lista,tabla,nombre)
         self.concatenar('goto '+ actualizar +';')        
         self.concatenar(falso +':')
+        
+        self.stackLoop.pop()
+        self.stackContinue.pop()
         
     #METODO PARA INTERPRETAR UN IF
     def InterpretarIf(self, ciclo, tabla, ambito):
@@ -487,6 +516,7 @@ class Editor:
         lista = ciclo.listacasos   
         tag = self.newTag('switch')
         fin = tag + 'Fin'
+        self.stackLoop.append(fin)
         scontador = 0
         haydef = False
         for caso in lista:
@@ -499,7 +529,7 @@ class Editor:
                     if (restipo == 'char'):
                         resvalor = "'"+resvalor+"'"
                     cuerpo = caso[1]
-                    conbreak = caso[2]
+                    #conbreak = caso[2]
                     namecase = tag+str(scontador)
                     if(scontador != 0):
                         previa = tag+str(scontador-1)
@@ -507,8 +537,8 @@ class Editor:
                     scontador += 1
                     self.concatenar('if(' + expval + ' != ' + resvalor + ') goto ' + namecase + ';')
                     self.InterpretarIns(cuerpo,tabla,tag)
-                    if conbreak:
-                        self.concatenar('goto ' + fin + ';')
+                    #if conbreak:
+                    #    self.concatenar('goto ' + fin + ';')
                 else:
                     self.errorSemantico('TYPE_ERROR',ciclo.linea,'El tipo a evaluar debe ser igual que evaluado')
             #DEFAULT
@@ -520,19 +550,28 @@ class Editor:
         if not haydef:
             self.concatenar(tag+str(scontador-1)+':')
         self.concatenar(fin + ':')
+        self.stackLoop.pop()
 
     #METODO PARA INTERPRETAR UN DOWHILE
     def InterpretarDowhile(self,ciclo,tabla,ambito):
         condicion = ciclo.condicion
         ins = ciclo.lista
+        
         regreso = self.newTag('dowhile')
         falso = regreso + 'F'
+        
+        self.stackLoop.append(falso)
+        self.stackContinue.append(regreso)
+
         self.concatenar(regreso + ':')
         self.InterpretarIns(ins,tabla,regreso)
         resultado = self.InterpretarOperacion(condicion,tabla)
         cond = resultado[1]
         self.concatenar('if(' + cond + ')' + ' goto ' + regreso + ';')
         self.concatenar(falso + ':')
+        
+        self.stackLoop.pop()
+        self.stackContinue.pop()
 
     #METODO PARA INTERPRETAR UN PRINTF
     def InterpretarPrintf(self,ins,tabla):
@@ -1347,6 +1386,8 @@ class Editor:
         self.tablaErrores.errores.clear()
         analizar.lexer.lineno = 0
         self.stack.clear()
+        self.stackLoop.clear()
+        self.stackContinue.clear()
 
 #--------------------------------------loop para mantener la ejecucion del editor
 if __name__ == "__main__":
