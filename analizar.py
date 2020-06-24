@@ -29,8 +29,8 @@ reservadas = {
 tokens = [
     'CADENA',
     'CARACTER',
-    'ASSIGN_SHIFTR',
-    'ASSIGN_SHIFTL',
+    'ASSING_SHIFTR',
+    'ASSING_SHIFTL',
     'ASSING_MAS',
     'ASSING_MENOS',
     'ASSING_POR',
@@ -83,8 +83,8 @@ tokens = [
 ] + list(reservadas.values())
 
 #DEFINICION DE TOKENS
-t_ASSIGN_SHIFTR     = r'>>='
-t_ASSIGN_SHIFTL     = r'<<='
+t_ASSING_SHIFTR     = r'>>='
+t_ASSING_SHIFTL     = r'<<='
 t_ASSING_MAS        = r'\+='
 t_ASSING_MENOS      = r'-='
 t_ASSING_POR        = r'\*='
@@ -92,7 +92,7 @@ t_ASSING_DIV        = r'/='
 t_ASSING_MOD        = r'%='
 t_ASSING_AND        = r'&='
 t_ASSING_OR         = r'\|='
-t_ASSING_XOR        = r'^='
+t_ASSING_XOR        = r'\^='
 t_SHIFTR            = r'>>'
 t_SHIFTL            = r'<<'
 t_INCREMENTO        = r'\+\+'
@@ -197,8 +197,7 @@ lexer = lex.lex()
 #PRECEDENCIA
 precedence = (
     ('left','COMA'),
-    ('right','ASSIGN_SHIFTR','ASSIGN_SHIFTL','ASSING_MAS','ASSING_MENOS','ASSING_POR','ASSING_DIV','ASSING_MOD','ASSING_AND','ASSING_OR','ASSING_XOR'),
-    ('right','INTERROGACION'),
+    ('right','ASSING_SHIFTR','ASSING_SHIFTL','ASSING_MAS','ASSING_MENOS','ASSING_POR','ASSING_DIV','ASSING_MOD','ASSING_AND','ASSING_OR','ASSING_XOR'),
     ('left','OR'),#logico
     ('left','AND'),#logico
     ('left','BARRAOR'),#bits
@@ -210,7 +209,7 @@ precedence = (
     ('left','MAS','MENOS'),
     ('left','POR','BARRA','MOD'),
     ('right','UMENOS','SIZEOF','INCREMENTO','DECREMENTO','ADMIRACION','NOTBIT'),#PUNTEROS & Y *
-    ('left','PARA','PARC','CORCHETEA','CORCHETEC','PUNTO','UINC','UDEC')#POSTINC POSTDEC
+    ('left','PARA','PARC','CORCHETEA','CORCHETEC','PUNTO','UINC','UDEC')
 )
 
 #---------------------------------ANALIZADOR SINTACTICO
@@ -304,7 +303,7 @@ def p_una_dimension(t):
 def p_impasignacion(t):
     'implict_asignacion : IDENTIFICADOR IGUAL expresion'        
     t[0] = (t[1],t[3])
-
+    
 def p_dimension(t):
     'dimension : CORCHETEA expresion CORCHETEC'
     t[0] = t[2]
@@ -314,12 +313,26 @@ def p_impasignacion_none(t):
     t[0] = t[1]
 
 def p_asignacion(t):
-    '''asignacion : IDENTIFICADOR IGUAL expresion PUNTOYCOMA
+    '''asignacion : IDENTIFICADOR signoassig expresion PUNTOYCOMA
                   | IDENTIFICADOR lista_dimension IGUAL expresion PUNTOYCOMA'''
-    if(t[2] == '='):
-        t[0] = Asignacion(t[1], t[3],t.lexer.lineno)
+    if(t[4] == ';'):
+        t[0] = Asignacion(t[1], t[3], t[2], t.lexer.lineno)
     else:
-        t[0] = Asignacion(t[1], t[4],t.lexer.lineno,t[2])
+        t[0] = Asignacion(t[1], t[4], None, t.lexer.lineno,t[2])
+
+def p_signoassig(t):
+    '''signoassig : IGUAL
+                  | ASSING_MAS
+                  | ASSING_MENOS
+                  | ASSING_POR
+                  | ASSING_DIV
+                  | ASSING_MOD
+                  | ASSING_AND
+                  | ASSING_OR
+                  | ASSING_XOR
+                  | ASSING_SHIFTL
+                  | ASSING_SHIFTR'''
+    t[0] = t[1]
 
 def p_tipo(t):
     '''tipo : INT
@@ -467,6 +480,14 @@ def p_exprexion(t):
         t[0] = OpNormal(t[1],t[3],Bits.BITSHR,t.lexer.lineno)
     else:
         t[0] = t[2]
+    
+def p_tern(t):
+    'expresion : PARA expresion PARC INTERROGACION expresion DOSPUNTOS expresion'
+    t[0] = Ternario(t[2],t[5],t[7],t.lexer.lineno)
+
+def p_cast(t):
+    'expresion : PARA tipo PARC expresion'
+    t[0] = Casteo(t[2],t[4],t.lexer.lineno)
 
 def p_expNum(t):
     '''expresion : ENTERO
@@ -509,6 +530,11 @@ def p_expCadena(t):
     '''expresion : CADENA
                  | CARACTER'''
     t[0] = OpCadena(t[1],t.lexer.lineno)
+
+def p_sizeof(t):
+    '''expresion : SIZEOF PARA expresion PARC
+                 | SIZEOF PARA tipo PARC'''
+    t[0] = OpTam(t[3],t.lexer.lineno)
 
 #METODO PARA MANEJAR LOS ERRORES SINTACTICOS
 def p_error(t):

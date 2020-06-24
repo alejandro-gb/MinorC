@@ -196,6 +196,7 @@ class Editor:
     tablaErrores = errores.TablaErrores()
     temp = 0
     numtag = 0
+    stack = []
 
     #CONSTRUCTOR
     def __init__(self,principal):
@@ -585,7 +586,7 @@ class Editor:
         except:
             self.errorSemantico('NONETYPE_ERROR',ins.linea,'Se intenta imprimir un valor que no existe')
      
-    #METODO PARA INTERPRETAR UNA ASIGNACION
+    #METODO PARA INTERPRETAR UNA DECLARACION
     def InterpretarDeclaracion(self, ins, tabla, ambito):
         tipo = ins.tipo.lower()
         valor = ''
@@ -622,7 +623,8 @@ class Editor:
                                     return
                             simbolo = tablaSimbolos.Simbolo(identificador, temporal, tipo, valor, ambito)
                             tabla.newSimbolo(simbolo)
-                            self.concatenar(temporal + ' = ' + str(valor) + ';')
+                            if(type(valor) is not bool):
+                                self.concatenar(temporal + ' = ' + str(valor) + ';')
                         else:
                             self.errorSemantico('TYPE_ERROR',ins.linea,'El tipo debe ser el mismo')
                 else:
@@ -635,6 +637,7 @@ class Editor:
         paravar = ins.paravar
         simbolo = tabla.getSimbolo(paravar)
         paratemp = simbolo.temporal
+        signo = ins.signo
         exp = self.InterpretarOperacion(ins.valor,tabla,paratemp)
         newtipo = exp[0]
         newval = exp[1]
@@ -643,10 +646,32 @@ class Editor:
                 #ID = E;
                 if(ins.dimensiones is None):
                     if(type(newval) is not bool):
-                        simbolo.valor = newval
                         if(newtipo == 'char'):
                             newval = "'" + newval + "'"
-                        self.concatenar(simbolo.temporal + ' = ' + str(newval) + ';')
+                        if(signo == '='):
+                            self.concatenar(simbolo.temporal + ' = ' + str(newval) + ';')
+                            simbolo.valor = newval
+                        elif(signo == '+='):
+                            self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' + ' + str(newval) + ' ; ')
+                        elif(signo == '-='):
+                            self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' - ' + str(newval) + ' ; ')
+                        elif(signo == '*='):
+                            self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' * ' + str(newval) + ' ; ')
+                        elif(signo == '/='):
+                            self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' / ' + str(newval) + ' ; ')
+                        elif(signo == '%='):
+                            self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' % ' + str(newval) + ' ; ')
+                        elif(signo == '<<='):
+                            self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' << ' + str(newval) + ' ; ')
+                        elif(signo == '>>='):
+                            self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' >> ' + str(newval) + ' ; ')
+                        elif(signo == '&='):
+                            self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' & ' + str(newval) + ' ; ')
+                        elif(signo == '|='):
+                            self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' | ' + str(newval) + ' ; ')
+                        elif(signo == '^='):
+                            self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' ^ ' + str(newval) + ' ; ')
+                            
                 else:
                     exp = simbolo.temporal
                     for x in ins.dimensiones:
@@ -702,6 +727,7 @@ class Editor:
         else:
             return False
 
+    #METODO PARA VERIFICAR EL AMBITO DE LAS VARIABLES
     def VerificarAmbito(self,id,ambito,tabla):
         simbolo = tabla.getSimbolo(id)
         if(simbolo is None):
@@ -710,6 +736,17 @@ class Editor:
             if(simbolo.ambito != ambito):
                 return True
         return False
+
+    #METODO PARA VERIFICAR EL TIPO DE LAS OPERACIONES
+    def checkOperacionTipo(self, t1,t2):
+        if(t1 == 'int' and t2 == 'int'):
+            return 'int'
+        elif(t1 == 'float' or t2 == 'float'):
+            return 'float'
+        elif(t1 == 'double' or t2 == 'double'):
+            return 'float'
+        else:
+            return None
 
     #METODO PARA INTERPRETAR UNA OPERACION 
     def InterpretarOperacion(self, operacion, tabla, var = None):
@@ -725,242 +762,264 @@ class Editor:
             op1 = self.InterpretarOperacion(operacion.op1,tabla)
             tipo1 = op1[0]
             val1 = op1[1]
+            
+            signo = operacion.signo
+            
             op2 = self.InterpretarOperacion(operacion.op2,tabla)
             tipo2 = op2[0]
             val2 = op2[1]
-            signo = operacion.signo
-            if(self.VerificarTipo(tipo1,tipo2)):
-                if(op1 != None and op2 != None):
-                    if signo == Aritmetica.SUMA:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' + ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    elif signo == Aritmetica.RESTA:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' - ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    elif signo == Aritmetica.MULTI:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' * ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    elif signo == Aritmetica.DIV:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' / ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    elif signo == Aritmetica.MODULO:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' % ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    
-                    #RELACIONALES
-                    elif signo == Relacional.MAYOR:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' > ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    elif signo == Relacional.MENOR:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' < ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    elif signo == Relacional.MAYORIGUAL:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' >= ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    elif signo == Relacional.MENORIGUAL:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' <= ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    elif signo == Relacional.EQUIVALENTE:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' == ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    elif signo == Relacional.DIFERENTE:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' != ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    
-                    #LOGICOS
-                    elif signo == Logica.AND:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' && ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    elif signo == Logica.OR:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' || ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-
-                    #BITS
-                    elif signo == Bits.BITAND:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' & ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    elif signo == Bits.BITOR:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' | ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    elif signo == Bits.BITXOR:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' ^ ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    elif signo == Bits.BITSHL:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' << ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    elif signo == Bits.BITSHR:
-                        valor1 = str(val1)
-                        valor2 = str(val2)
-                        if(' ' in valor1):
-                            temp = self.newTemp()
-                            temporal = temp + '=' + valor1 + ';'
-                            self.concatenar(temporal)
-                            valor1 = temp
-                        ntemp = self.newTemp()
-                        valor = valor1 + ' >> ' + valor2
-                        self.concatenar(ntemp + ' = ' + valor + ';')
-                        return ('int',ntemp)
-                    
+            
+            valor1 = str(val1)
+            valor2 = str(val2)
+            
+            if(op1 != None and op2 != None):
+                #ARITMETICAS
+                if signo == Aritmetica.SUMA:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' + ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
                     else:
-                        return None
+                        nval = valor1 + ' + ' + valor2
+                        return (restipo , nval)       
+                elif signo == Aritmetica.RESTA:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' - ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' - ' + valor2
+                        return (restipo , nval)
+                elif signo == Aritmetica.MULTI:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' * ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' * ' + valor2
+                        return (restipo , nval)
+                elif signo == Aritmetica.DIV:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' / ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' / ' + valor2
+                        return (restipo , nval)
+                elif signo == Aritmetica.MODULO:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' % ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' % ' + valor2
+                        return (restipo , nval)
+                    
+                #RELACIONALES
+                elif signo == Relacional.MAYOR:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' > ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' > ' + valor2
+                        return (restipo , nval)
+                elif signo == Relacional.MENOR:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' < ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' < ' + valor2
+                        return (restipo , nval)
+                elif signo == Relacional.MAYORIGUAL:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' >= ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' >= ' + valor2
+                        return (restipo , nval)
+                elif signo == Relacional.MENORIGUAL:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' <= ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' <= ' + valor2
+                        return (restipo , nval)
+                elif signo == Relacional.EQUIVALENTE:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' == ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' == ' + valor2
+                        return (restipo , nval)
+                elif signo == Relacional.DIFERENTE:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' != ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' != ' + valor2
+                        return (restipo , nval)
+                    
+                #LOGICOS
+                elif signo == Logica.AND:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' && ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' && ' + valor2
+                        return (restipo , nval)
+                elif signo == Logica.OR:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' || ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' || ' + valor2
+                        return (restipo , nval)
+
+                #BITS
+                elif signo == Bits.BITAND:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' & ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' & ' + valor2
+                        return (restipo , nval)
+                elif signo == Bits.BITOR:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' | ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' | ' + valor2
+                        return (restipo , nval)
+                elif signo == Bits.BITXOR:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' ^ ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' ^ ' + valor2
+                        return (restipo , nval)
+                elif signo == Bits.BITSHL:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' << ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' << ' + valor2
+                        return (restipo , nval)
+                elif signo == Bits.BITSHR:
+                    restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo is None):
+                         self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
+                    if(var is None):
+                        temp = self.newTemp()
+                        temporal = temp + ' = ' + valor1 + ' >> ' + valor2 + ';'
+                        self.concatenar(temporal)
+                        valor1 = temp
+                        return (restipo, temp)
+                    else:
+                        nval = valor1 + ' >> ' + valor2
+                        return (restipo , nval)
                 else:
-                    self.errorSemantico('OPERATION_ERROR',operacion.linea,'Operacion invalida (operandos?)')
                     return None
             else:
-                self.errorSemantico('TYPE_ERROR',operacion.linea,'Los tipos deben ser iguales')
+                self.errorSemantico('OPERATION_ERROR',operacion.linea,'Operacion invalida (operandos?)')
+                return None
+
                 return None
         elif isinstance(operacion, OpCadena):
             cadena = operacion.valor
@@ -995,6 +1054,28 @@ class Editor:
             newtipo = exp[0]
             newval = '!'+str(exp[1])
             return(newtipo,newval)
+        elif isinstance(operacion, OpTam):
+            restipo = ''
+            resval = ''
+            if (type(operacion.exp) is str):
+                restipo = operacion.exp
+            else:
+                res = self.InterpretarOperacion(operacion.exp,tabla)
+                restipo = res[0]
+                resval = res[1]
+            if(restipo == 'int'):
+                resval = 4
+            elif(restipo == 'char'):
+                resval = 1
+            elif(restipo == 'float'):
+                resval = 4
+            elif(restipo == 'double'):
+                resval = 8
+            else:
+                self.errorSemantico('TYPE_ERROR',operacion.linea,'Sizeof de tipos basicos')
+                resval = 0
+
+            return('int',resval)
         elif isinstance(operacion, OpInc):
             exp = self.InterpretarOperacion(operacion.exp,tabla)
             newtipo = exp[0]
@@ -1035,6 +1116,37 @@ class Editor:
             newasig = newval + ' = ' + newval + ' - 1;'
             self.concatenar(newasig)
             return(newtipo, True)
+        elif isinstance(operacion, Ternario):
+            condicion =self.InterpretarOperacion(operacion.condicion,tabla)
+            condval = condicion[1]
+            estrue =self.InterpretarOperacion(operacion.verdadero,tabla)
+            truetipo = estrue[0]
+            trueval = estrue[1]
+            esfalse = self.InterpretarOperacion(operacion.falso,tabla)
+            falsetipo = esfalse[0]
+            falseval = esfalse[1]
+            tag = self.newTag('ternario')
+            tagV = tag + 'V'
+            tagF = tag + 'F'
+            tagFin = tag + 'E'
+            self.concatenar('if(' + condval + ') goto '+ tagV + ';')
+            self.concatenar('goto ' + tagF + ';' )
+            self.concatenar(tagV + ':')
+            self.concatenar(var + ' = ' + str(trueval) + ';')
+            self.concatenar('goto ' + tagFin + ';' )
+            self.concatenar(tagF + ':')
+            self.concatenar(var + ' = ' + str(falseval) + ';')
+            self.concatenar(tagFin + ':')
+            return(truetipo,True)
+        elif isinstance(operacion, Casteo):
+            tipo = operacion.tipo
+            if(tipo == 'double'):
+                tipo = 'float'
+            exp = self.InterpretarOperacion(operacion.expresion,tabla)
+            exptipo = exp[0]
+            expval = exp[1]
+            self.concatenar(expval + ' = (' + tipo + ')' + expval + ';')
+            return(tipo,expval)
         else:
             self.errorSemantico('OPERATION_ERROR',operacion.linea,'No se pudo hacer ninguna operacion')
 
@@ -1234,6 +1346,7 @@ class Editor:
         self.tablaGlobal.simbolos.clear()
         self.tablaErrores.errores.clear()
         analizar.lexer.lineno = 0
+        self.stack.clear()
 
 #--------------------------------------loop para mantener la ejecucion del editor
 if __name__ == "__main__":

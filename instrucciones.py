@@ -24,8 +24,9 @@ class Declaracion(Instruccion):
 #CLASE QUE MANEJA LAS ASIGNACIONES
 class Asignacion(Instruccion):
     #CONSTRUCTOR RECIBE EL ID Y EL VALOR
-    def __init__(self, paravar, valor, linea, dimensiones = None):
+    def __init__(self, paravar, valor, signo ,linea, dimensiones = None):
         self.paravar = paravar
+        self.signo = signo
         self.dimensiones = dimensiones
         self.valor = valor
         self.linea = linea
@@ -224,3 +225,25 @@ class OpPostDec(Operacion):
     def __init__(self,exp,linea):
         self.exp = exp
         self.linea = linea 
+
+#CLASE QUE MANEJA LOS OPERADORES TERNARIOS
+class Ternario(Operacion):
+    #CONSTRUCTOR RECIBE LA CONDICION, SI ES VERDADERO Y SI ES FALSO
+    def __init__(self,condicion,verdadero,falso,linea):
+        self.condicion = condicion
+        self.verdadero = verdadero
+        self.falso = falso
+        self.linea = linea
+
+#CLASE QUE MANEJA EL OPERADOR SIZEOF
+class OpTam(Operacion):
+    #CONSTRUCTOR RECIBE LA EXPRESION
+    def __init__(self, exp, linea):
+        self.exp = exp
+        self.linea = linea
+
+class Casteo(Operacion):
+    def __init__(self, tipo, expresion,linea):
+        self.tipo = tipo
+        self.linea = linea
+        self.expresion = expresion
