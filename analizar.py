@@ -276,8 +276,26 @@ def p_soloprint(t):
     t[0] = [t[1]]
 
 def p_funcion(t):
-    '''funcion : tipo IDENTIFICADOR PARA PARC LLAVEA instrucciones LLAVEC'''
-    t[0] = Funcion(t[1],t[2],t[6],t.lexer.lineno)
+    '''funcion : tipo IDENTIFICADOR PARA opcionfunc LLAVEA instrucciones LLAVEC'''
+    t[0] = Funcion(t[1],t[2],t[4],t[6],t.lexer.lineno)
+
+def p_opcionfunc(t):
+    '''opcionfunc : PARC
+                  | listaparams PARC'''
+    t[0] = t[1]
+    
+def p_listaparams(t):
+    'listaparams : listaparams COMA parametro'
+    t[1].append(t[3])
+    t[0] = t[1]
+
+def p_listaparam(t):
+    'listaparams : parametro'
+    t[0] = [t[1]]
+
+def p_parametro(t):
+    'parametro : tipo IDENTIFICADOR'
+    t[0] = (t[1],t[2])
 
 def p_declaracion(t):
     'declaracion : tipo lista_impasignaciones PUNTOYCOMA'
@@ -493,6 +511,19 @@ def p_tern(t):
 def p_cast(t):
     'expresion : PARA tipo PARC expresion'
     t[0] = Casteo(t[2],t[4],t.lexer.lineno)
+
+def p_llamada(t):
+    'expresion : IDENTIFICADOR PARA listavalores PARC'
+    t[0] = Llamada(t[1], t[3], t.lexer.lineno)
+
+def p_listavals(t):
+    'listavalores : listavalores COMA expresion'
+    t[1].append(t[3])
+    t[0] = t[1]
+
+def p_listaunval(t):
+    'listavalores : expresion'
+    t[0] = [t[1]]
 
 def p_expNum(t):
     '''expresion : ENTERO

@@ -7,10 +7,11 @@ class Instruccion:
 #CLASE QUE MANEJA LAS FUNCIONES
 class Funcion(Instruccion):
     #CONSTRUCTOR RECIBE EL TIPO NOMBRE DE LA FUNCION Y LA LISTA DE INSTRCCIONES
-    def __init__(self, tipo, nombre, lista, linea):
+    def __init__(self, tipo, nombre, listaparam, lista, linea):
         self.tipo = tipo
         self.nombre = nombre
         self.linea = linea
+        self.listaparam = listaparam
         self.lista = lista
 
 #CLASE QUE MANEJA UNA DECLARACION
@@ -259,3 +260,9 @@ class Casteo(Operacion):
         self.tipo = tipo
         self.linea = linea
         self.expresion = expresion
+
+class Llamada(Operacion):
+    def __init__(self, id, lista, linea):
+        self.id = id
+        self.linea = linea
+        self.lista = lista

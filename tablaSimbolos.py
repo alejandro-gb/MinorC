@@ -2,8 +2,9 @@
 class Simbolo():
 
     #CONSTRUCTOR DE UN SIMBOLO
-    def __init__(self, id, temporal, tipo, valor, ambito , dimension = '', referencia = ''):
+    def __init__(self, id, nombre, temporal, tipo, valor, ambito , dimension = '', referencia = ''):
         self.id = id
+        self.nombre = nombre
         self.temporal = temporal
         self.tipo = tipo
         self.valor = valor
