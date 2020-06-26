@@ -367,7 +367,7 @@ def p_asignacion(t):
     if(t[4] == ';'):
         t[0] = Asignacion(t[1], t[3], t[2], t.lexer.lineno)
     else:
-        t[0] = Asignacion(t[1], t[4], None, t.lexer.lineno,t[2])
+        t[0] = Asignacion(t[1], t[4], t[3], t.lexer.lineno,t[2])
 
 def p_signoassig(t):
     '''signoassig : IGUAL
@@ -593,6 +593,10 @@ def p_sizeof(t):
     '''expresion : SIZEOF PARA expresion PARC
                  | SIZEOF PARA tipo PARC'''
     t[0] = OpTam(t[3],t.lexer.lineno)
+
+def p_acceso(t):
+    'expresion : IDENTIFICADOR lista_dimension'
+    t[0] = Acceso(t[1],t[2],t.lexer.lineno)
 
 #METODO PARA MANEJAR LOS ERRORES SINTACTICOS
 def p_error(t):

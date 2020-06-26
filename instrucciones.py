@@ -267,3 +267,10 @@ class Llamada(Operacion):
         self.id = id
         self.linea = linea
         self.lista = lista
+
+class Acceso(Operacion):
+    def __init__(self, id, lista, linea):
+        self.id = id
+        self.lista = lista
+        self.linea = linea
+        

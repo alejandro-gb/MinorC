@@ -779,13 +779,25 @@ class Editor:
                             self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' ^ ' + str(newval) + ' ; ')
                             
                 else:
-                    exp = simbolo.temporal
-                    for x in ins.dimensiones:
-                        posicion = self.InterpretarOperacion(x,tabla)
-                        val = posicion[1]
-                        exp += '[' + str(val) + ']'
-                    exp += ' = ' + str(newval) + ';'
-                    self.concatenar(exp)
+                    expre = simbolo.temporal
+                    numdim = simbolo.dimension
+                    valor = simbolo.valor
+                    if(len(numdim) == len(ins.dimensiones)):
+                        for x in range(0,len(ins.dimensiones)):
+                            posicion = self.InterpretarOperacion(ins.dimensiones[x],tabla)
+                            val = posicion[1]
+                            #if(val < numdim[x]):
+                            expre += '[' + str(val) + ']'
+                            try:
+                                simbolo.valor[val] = newval
+                            except:
+                                simbolo.valor.append(newval)
+                            #else:
+                            #    self.errorSemantico('INDEX_ERROR',ins.linea,'Index out range')
+                        expre += ' = ' + str(newval) + ';'
+                        self.concatenar(expre)
+                    else:
+                        self.errorSemantico('INDEX_ERROR',ins.linea,'Index out range (#dimension)')
             else:
                 self.errorSemantico('TYPE_ERROR',ins.linea,'El tipo debe ser el mismo')
         else:
@@ -1192,6 +1204,24 @@ class Editor:
                 tipo = variable.tipo
                 temporal = variable.temporal
                 return(tipo,temporal)
+        elif isinstance(operacion, Acceso):
+            variable = self.BuscarSimbolo(operacion.id,tabla)
+            lista = operacion.lista
+            if(variable == None):
+                self.errorSemantico('UNDEFINED_VARIABLE',operacion.linea,'La variable no existe')
+                return None
+            else:
+                if(type(variable.dimension) is list):
+                    strtoreturn = variable.temporal
+                    for x in lista:
+                        posicion = self.InterpretarOperacion(x,tabla)
+                        postipo = posicion[0]
+                        posval = str(posicion[1])
+                        strtoreturn += '['+posval+']'
+                    return(variable.tipo,strtoreturn)
+                else:
+                    self.errorSemantico('TYPE_VARIABLE',operacion.linea,'La variable no es arreglo')
+                    return None
         elif isinstance(operacion, OpMenos):
             exp = self.InterpretarOperacion(operacion.exp,tabla)
             newtipo = exp[0]
