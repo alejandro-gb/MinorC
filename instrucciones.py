@@ -35,10 +35,11 @@ class Asignacion(Instruccion):
 #CLASE QUE MANEJA LOS ARREGLOS
 class Arreglo(Instruccion):
     #CONSTRUCTOR RECIBE EL TIPO, NOMBRE, DIMENSIONES
-    def __init__(self, tipo, nombre, dimensiones,linea):
+    def __init__(self, tipo, nombre, dimensiones, listavalores ,linea):
         self.tipo = tipo
         self.nombre = nombre
         self.dimensiones = dimensiones
+        self.listavalores = listavalores
         self.linea = linea
         
 #CLASE QUE MANEJA LOS CICLOS WHILE

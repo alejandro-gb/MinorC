@@ -303,11 +303,32 @@ def p_declaracion(t):
 
 def p_arreglo(t):
     'arreglo : tipo IDENTIFICADOR lista_dimension PUNTOYCOMA'
-    t[0] = Arreglo(t[1],t[2],t[3],t.lexer.lineno)
+    t[0] = Arreglo(t[1], t[2], t[3], None, t.lexer.lineno)
 
 def p_arreglostr(t):
-    'arreglo : tipo IDENTIFICADOR CORCHETEA CORCHETEC IGUAL expresion PUNTOYCOMA'
-    t[0] = Arreglo(t[1],t[2],t[6],t.lexer.lineno)
+    'arreglo : tipo IDENTIFICADOR lista_dimension IGUAL inicializacion PUNTOYCOMA'
+    t[0] = Arreglo(t[1], t[2], t[3], t[5], t.lexer.lineno)
+
+def p_inicializacion(t):
+    'inicializacion : LLAVEA listaini LLAVEC'
+    t[0] = t[2]
+
+def p_listaini(t):
+    'listaini : listaini COMA inidimension'
+    t[1].append(t[3])
+    t[0] = t[1]
+
+def p_unaini(t):
+    'listaini : inidimension'
+    t[0] = [t[1]]
+
+def p_inidimension(t):
+    '''inidimension : LLAVEA listavalores LLAVEC
+                    | listavalores'''
+    if(t[1] == '{'):
+        t[0] = t[2]
+    else:
+        t[0] = t[1]
 
 def p_lista_impasignaciones(t):
     'lista_impasignaciones : lista_impasignaciones COMA implict_asignacion'
@@ -332,7 +353,8 @@ def p_impasignacion(t):
     t[0] = (t[1],t[3])
     
 def p_dimension(t):
-    'dimension : CORCHETEA expresion CORCHETEC'
+    '''dimension : CORCHETEA expresion CORCHETEC
+                 | CORCHETEA CORCHETEC'''
     t[0] = t[2]
 
 def p_impasignacion_none(t):

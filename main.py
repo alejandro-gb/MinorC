@@ -199,11 +199,15 @@ class Editor:
     numtag = 0
     numvar = 0
     numfunc = 0
+    ismain = True
+    iscall = False
     stack = []
     stackLoop = []
     stackContinue = []
     returns = []
-    ismain = True
+    namerecursive = ''
+    isrecursive = False
+    
 
     #CONSTRUCTOR
     def __init__(self,principal):
@@ -345,10 +349,11 @@ class Editor:
                 if isinstance(x,Funcion) :  
                     self.concatenar('')
                     self.InterpretarFuncion(x, tabla)
-
-            self.concatenar('regresos:')
-            for r in self.returns:
-                self.concatenar('if($ra=='+str(r)+') goto ra'+str(r)+';')
+            
+            if self.returns:
+                self.concatenar('regresos:')
+                for r in self.returns:
+                    self.concatenar('if($ra=='+str(r)+') goto ra'+str(r)+';')
                 
         #except:
         #    messagebox.showerror('ERROR','NO SE INTERPRETO')
@@ -385,6 +390,7 @@ class Editor:
         tabla.newSimbolo(simbolo)
         self.stack.append(nombre)
         self.concatenar(nombre + ':')
+        self.namerecursive = nombre
         nump = 0
         for param in params:
             nums = self.getId()
@@ -397,10 +403,11 @@ class Editor:
         
         self.InterpretarIns(ins,tabla,nombre)
         self.stack.pop()
+        self.iscall = False
 
     #METODO PARA INTERPRETAR UNA FUNCION
     def InterpretarMain(self, funcion, tabla):
-        ins     = funcion.lista
+        ins = funcion.lista
         num = self.getId()
         simbolo = tablaSimbolos.Simbolo(num, 'main', '', 'int', 'Funcion', 'global')
         tabla.newSimbolo(simbolo)
@@ -410,6 +417,7 @@ class Editor:
         self.concatenar('exit;')
         self.stack.pop()
         self.ismain = False
+        self.iscall = False
 
     #METODO PARA INTERPRETAR UNA ETIQUETA
     def InterpretarEtiqueta(self,ins,tabla,ambito):
@@ -424,10 +432,14 @@ class Editor:
     #METODOD PARA INTERPRETAR UN RETURN
     def InterpretarReturn(self, ret, tabla):
         if(self.ismain == False):
+            tempstack = self.returns.copy()
             exp = self.InterpretarOperacion(ret.expresion,tabla)
             exptipo = exp[0]
             expval = str(exp[1])
-            self.concatenar('$v0 = ' + expval +';')
+            self.concatenar('$v0 = ' + expval +';') 
+            if self.iscall:
+                self.concatenar('$ra = $ra - 1;')
+            self.iscall = False
             self.concatenar('goto regresos;')
 
     #METODOD PARA INTERPRETAR UN RETURN
@@ -784,21 +796,53 @@ class Editor:
         tipo = ins.tipo
         nombre = ins.nombre
         dimensiones = ins.dimensiones
-        valor = ''
+        listaval = ins.listavalores
+        valor = []
         if self.VerificarAmbito(nombre,ambito,tabla):
+            ide = self.getId()
             temporal = self.newTemp()
             #TIPO ID LISTADIMENSIONES ;
             if(type(dimensiones) is list):
                 numdim = len(dimensiones)
                 dims = []
                 for x in dimensiones:
-                    val = self.InterpretarOperacion(x, tabla)
-                    newtipo = val[0]
-                    newval = val[1]
-                    dims.append(newval)
-                simbolo = tablaSimbolos.Simbolo(nombre, temporal, tipo, dims, ambito, numdim)
-                tabla.newSimbolo(simbolo)
+                    if(type(x) is str):
+                        dims.append(None)
+                    else:
+                        val = self.InterpretarOperacion(x, tabla)
+                        newtipo = val[0]
+                        newval = val[1]
+                        dims.append(newval)
                 self.concatenar(temporal + '=' + 'array();')
+                if(listaval is not None):
+                    if(len(dims) != len(listaval)):
+                        self.errorSemantico('INDEX_ERROR',ins.linea,'las dimensiones y la inicializacion debe coincidir')
+                        return
+                    numerodim = 0
+                    for x in listaval:
+                        numeroelem = 0
+                        for y in x:
+                            resultado = self.InterpretarOperacion(y,tabla)
+                            restipo = resultado[0]
+                            resval = resultado[1]
+                            if(dims[numerodim] == None):
+                                dims[numerodim] = 100
+                            if(numeroelem < dims[numerodim]):
+                                if self.VerificarTipo(tipo, restipo):
+                                    valor.append(resval)
+                                    self.concatenar(temporal+'[' + str(numeroelem) + '] = '+str(resval) + ';')
+                                    numeroelem += 1
+                                else:
+                                    self.errorSemantico('TYPE_ERROR',ins.linea,'Los elementos del arreglo deben ser del mismo tipo')
+                            else:
+                                self.errorSemantico('INDEX_ERROR',ins.linea,'El numero de elementos es mayor al declarado')
+                        numerodim += 1
+                for x in range(0,len(dims)):
+                    if(dims[x] == 100):
+                        dims[x] = None
+                simbolo = tablaSimbolos.Simbolo(ide, nombre, temporal, tipo, valor, ambito, dims)
+                tabla.newSimbolo(simbolo)
+                
             #TIPO ID [] = EXPRESION ;
             else:
                 resultado = self.InterpretarOperacion(dimensiones,tabla)
@@ -1257,11 +1301,16 @@ class Editor:
             self.concatenar(expval + ' = (' + tipo + ')' + expval + ';')
             return(tipo,expval)
         elif isinstance(operacion, Llamada):
-            id = operacion.id
-            valores = operacion.lista
+
+            self.iscall = True
             self.numfunc += 1
             self.returns.append(self.numfunc)
             self.concatenar('$ra = '+str(self.numfunc)+';')
+            id = operacion.id
+            if(self.namerecursive == id):
+                self.isrecursive = True
+                self.iscall = False
+            valores = operacion.lista
             contparam = 0
             for valor in valores:
                 parametro = self.InterpretarOperacion(valor, tabla)
@@ -1270,11 +1319,13 @@ class Editor:
                 par = '$a'+str(contparam)
                 self.concatenar(par + ' = ' + val + ';')
                 contparam += 1
+            
             self.concatenar('goto ' + id +';')
             tempstack = self.returns.copy()
             ra = str(tempstack[-1])
             self.concatenar('ra'+ra+':')
             tempstack.pop()
+      
             return('int','$v0')
         else:
             self.errorSemantico('OPERATION_ERROR',operacion.linea,'No se pudo hacer ninguna operacion')
@@ -1490,6 +1541,7 @@ class Editor:
         self.stackContinue.clear()
         self.returns.clear()
         self.ismain = True
+        self.iscall = False
 
 #--------------------------------------loop para mantener la ejecucion del editor
 if __name__ == "__main__":
