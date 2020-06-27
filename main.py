@@ -4,13 +4,20 @@ import os
 from tkinter import filedialog
 from tkinter import messagebox
 from tkinter import ttk
+from tkinter import *
+import time
+import threading
 from tkinter import PhotoImage, simpledialog
 from tkinter.ttk import *
 from graphviz import Digraph
 import analizar
 import tablaSimbolos
 import errores
+import ts as TS
+from instruccionesAugus import *
+import interprete as Inter
 from instrucciones import *
+from menu import *
 
 #---------------------------------------BARRA DE MENU
 class BarraDeMenu:
@@ -319,7 +326,15 @@ class Editor:
         self.Interpretar(self.instrucciones, self.tablaGlobal)
         self.ReporteTablaSimbolos()
         self.ReporteErrores()
-        self.consola.insert(gui.END,self.resultado)
+        try:
+            f = open("CodigoAugus.txt","w")
+            f.write(self.resultado)
+            f.close
+        except:
+            print("Error al escribir en el archivo")
+        self.EjecutarAugus(self.resultado)
+        #self.consola.insert(gui.END,self.resultado)
+        
         if(len(self.tablaErrores.errores) != 0):
             self.VerReporteErrores()
 
@@ -694,7 +709,6 @@ class Editor:
     def InterpretarDeclaracion(self, ins, tabla, ambito):
         tipo = ins.tipo.lower()
         valor = ''
-
         for nombre in ins.nombres:
             #try:
                 if((type(nombre) is str and self.VerificarAmbito(nombre, ambito ,tabla)) or (self.VerificarAmbito(nombre[0], ambito, tabla))):
@@ -777,7 +791,7 @@ class Editor:
                             self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' | ' + str(newval) + ' ; ')
                         elif(signo == '^='):
                             self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' ^ ' + str(newval) + ' ; ')
-                            
+                #ASIGNAR A ARREGLO
                 else:
                     expre = simbolo.temporal
                     numdim = simbolo.dimension
@@ -786,14 +800,11 @@ class Editor:
                         for x in range(0,len(ins.dimensiones)):
                             posicion = self.InterpretarOperacion(ins.dimensiones[x],tabla)
                             val = posicion[1]
-                            #if(val < numdim[x]):
                             expre += '[' + str(val) + ']'
                             try:
                                 simbolo.valor[val] = newval
                             except:
                                 simbolo.valor.append(newval)
-                            #else:
-                            #    self.errorSemantico('INDEX_ERROR',ins.linea,'Index out range')
                         expre += ' = ' + str(newval) + ';'
                         self.concatenar(expre)
                     else:
@@ -819,36 +830,38 @@ class Editor:
                 dims = []
                 for x in dimensiones:
                     if(type(x) is str):
-                        dims.append(None)
+                        dims.append(100)
                     else:
                         val = self.InterpretarOperacion(x, tabla)
                         newtipo = val[0]
                         newval = val[1]
                         dims.append(newval)
+                        
                 self.concatenar(temporal + '=' + 'array();')
                 if(listaval is not None):
-                    if(len(dims) != len(listaval)):
-                        self.errorSemantico('INDEX_ERROR',ins.linea,'las dimensiones y la inicializacion debe coincidir')
-                        return
-                    numerodim = 0
-                    for x in listaval:
-                        numeroelem = 0
-                        for y in x:
-                            resultado = self.InterpretarOperacion(y,tabla)
+                    
+                    for x in range(0,len(listaval)):
+                        for y in range(0,len(listaval[x])):
+                            resultado = self.InterpretarOperacion(listaval[x][y],tabla)
                             restipo = resultado[0]
                             resval = resultado[1]
-                            if(dims[numerodim] == None):
-                                dims[numerodim] = 100
-                            if(numeroelem < dims[numerodim]):
-                                if self.VerificarTipo(tipo, restipo):
-                                    valor.append(resval)
-                                    self.concatenar(temporal+'[' + str(numeroelem) + '] = '+str(resval) + ';')
-                                    numeroelem += 1
+                            if self.VerificarTipo(tipo, restipo):
+                                valor.append(resval)
+                                if(len(dimensiones) == 1):
+                                    if(len(listaval[x]) < dims[0]+1 ):
+                                        self.concatenar(temporal + '['+str(y)+'] = '+str(resval)+';')
+                                    else:
+                                        self.errorSemantico('INDEX_ERROR',ins.linea,'Exeso de elementos en el inicializador del array')
                                 else:
-                                    self.errorSemantico('TYPE_ERROR',ins.linea,'Los elementos del arreglo deben ser del mismo tipo')
+                                    if(len(listaval) < dims[0]+1):
+                                        if(len(listaval[x]) < dims[1]+1):
+                                            self.concatenar(temporal + '['+str(x)+']['+str(y)+'] = '+str(resval)+';')
+                                        else:
+                                            self.errorSemantico('INDEX_ERROR',ins.linea,'Exeso de elementos en el inicializador del array')
+                                    else:
+                                        self.errorSemantico('INDEX_ERROR',ins.linea,'Exeso de elementos en el inicializador del array')
                             else:
-                                self.errorSemantico('INDEX_ERROR',ins.linea,'El numero de elementos es mayor al declarado')
-                        numerodim += 1
+                                self.errorSemantico('TYPE_ERROR',ins.linea,'Los elementos del arreglo deben ser del mismo tipo')
                 for x in range(0,len(dims)):
                     if(dims[x] == 100):
                         dims[x] = None
@@ -871,6 +884,8 @@ class Editor:
         if(tipo1 == 'int' and tipo2 == 'int'):
             return True
         elif(tipo1 == 'float' and (tipo2 == 'float' or tipo2 == 'double')):
+            return True
+        elif(tipo1 == 'double' and (tipo2 == 'double' or tipo2 == 'float')):
             return True
         elif(tipo1 == 'char' and tipo2 == 'char'):
             return True
@@ -925,19 +940,17 @@ class Editor:
             return (tipo,valor)
         elif isinstance(operacion, OpNormal):
             op1 = self.InterpretarOperacion(operacion.op1,tabla)
-            tipo1 = op1[0]
-            val1 = op1[1]
-            
+            op2 = self.InterpretarOperacion(operacion.op2,tabla)
             signo = operacion.signo
             
-            op2 = self.InterpretarOperacion(operacion.op2,tabla)
-            tipo2 = op2[0]
-            val2 = op2[1]
-            
-            valor1 = str(val1)
-            valor2 = str(val2)
-            
             if(op1 != None and op2 != None):
+                tipo1 = op1[0]
+                val1 = op1[1]
+                tipo2 = op2[0]
+                val2 = op2[1]
+                valor1 = str(val1)
+                valor2 = str(val2)
+
                 #ARITMETICAS
                 if signo == Aritmetica.SUMA:
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
@@ -1213,11 +1226,14 @@ class Editor:
             else:
                 if(type(variable.dimension) is list):
                     strtoreturn = variable.temporal
-                    for x in lista:
-                        posicion = self.InterpretarOperacion(x,tabla)
+                    for x in range(0,len(lista)):
+                        posicion = self.InterpretarOperacion(lista[x],tabla)
                         postipo = posicion[0]
                         posval = str(posicion[1])
+                        #if( posicion[1] < variable.dimension[x]):
                         strtoreturn += '['+posval+']'
+                        #else:
+                        #    self.errorSemantico('INDEX_VARIABLE',operacion.linea,'La posicion no existe')
                     return(variable.tipo,strtoreturn)
                 else:
                     self.errorSemantico('TYPE_VARIABLE',operacion.linea,'La variable no es arreglo')
@@ -1555,6 +1571,44 @@ class Editor:
         self.numvar += 1
         return num
 
+
+    pathFile=''
+    comando_consola=''
+    ts_debug=TS.TablaDeSimbolos()
+    no_instruccion=0
+    ejecucion_automatica=1
+
+    def EjecutarAugus(self, texto):
+        global ts_debug, no_instruccion, waitForCommand, ejecucion_automatica
+        ejecucion_automatica = 1
+        waitForCommand = 0
+        Inter.inicializarGUI(self.consola)
+        Inter.limpiarValores()
+        Inter.inicializarEjecucionAscendente(texto)
+        Inter.inicializarTS()
+        i=0
+        while i<len(Inter.instrucciones):
+            if waitForCommand==0 or waitForCommand==2: #0=Sin Entrada, 1=Esperando, 2=Comando Ingresado
+                if i<len(Inter.instrucciones) :
+                    is_asig=Inter.instrucciones[i]
+                    if isinstance(is_asig,Asignacion): 
+                        # COMANDO PARA LEER DE CONSOLA
+                        if isinstance(is_asig.valor,Read) and waitForCommand==0:
+                            waitForCommand=1
+                            no_instruccion=i
+                            return None
+                    #EJECUTAR INSTRUCCION
+                    instr_temp=Inter.ejecutarInstruccionUnitaria(1,i)
+                    if instr_temp is not None:
+                        if instr_temp==-10 : # EXIT
+                            i=len(Inter.instrucciones)
+                        else: #GOTO
+                            i=instr_temp
+                    waitForCommand=0
+                else:
+                    MessageBox.showinfo("Finalizado","Ultima instruccion ejecutada.")
+            i=i+1
+
     #METODO PARA LIMPIAR LAS TABLAS Y VARIABLES
     def reset(self):
         self.resultado = ''
@@ -1565,7 +1619,7 @@ class Editor:
         self.numfunc = 0
         self.tablaGlobal.simbolos.clear()
         self.tablaErrores.errores.clear()
-        analizar.lexer.lineno = 0
+        #analizar.lexer.lineno = 0
         self.stack.clear()
         self.stackLoop.clear()
         self.stackContinue.clear()

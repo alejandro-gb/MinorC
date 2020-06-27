@@ -182,7 +182,8 @@ def t_newline(t):
 
 #METODO PARA RECONOCER UN ERROR
 def t_error(t):
-    desc = 'El caracter: ' + t.value[0] + ' no es valido'
+    desc = 'El caracter: ' + str(t.value[0]) + ' no es valido'
+    print(desc)
     nuevo = errores.Error('LEXICO',desc, t.lexer.lineno, t.lexpos)
     main.Editor.tablaErrores.newError(nuevo)
     t.lexer.skip(1)
@@ -602,13 +603,18 @@ def p_acceso(t):
 def p_error(t):
     if t:
         desc = 'El token: ' + str(t.value) + ' no se esperaba'
-        nuevo = errores.Error('SINTACTICO',desc,t.lexer.lineno+1,t.lexpos)
+        nuevo = errores.Error('SINTACTICO',desc,t.lexer.lineno,t.lexpos)
         main.Editor.tablaErrores.newError(nuevo)
-        parser.errok()
+        while True:
+            tk = parser.token()
+            if not tk or tk.type == 'PUNTOYCOMA':
+                break
+        #parser.errok()
     else:
         desc = 'Error sintactico al final del archivo'
         nuevo = errores.Error('SINTACTICO',desc,'EOF','EOF')
         main.Editor.tablaErrores.newError(nuevo)
+        return
         
 #------------------------------------------IMPORTS
 import ply.yacc as yacc
@@ -616,4 +622,6 @@ parser = yacc.yacc()
 
 #METODO DEL PARSER
 def parse(input):
-    return parser.parse(input)
+    lexer.lineno = 1
+    parsear = parser.parse(input, lexer = lexer)
+    return parsear
