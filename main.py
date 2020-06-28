@@ -17,7 +17,13 @@ import ts as TS
 from instruccionesAugus import *
 import interprete as Inter
 from instrucciones import *
-from menu import *
+
+
+pathFile=''
+comando_consola=''
+ts_debug=TS.TablaDeSimbolos()
+no_instruccion=0
+ejecucion_automatica=1
 
 #---------------------------------------BARRA DE MENU
 class BarraDeMenu:
@@ -214,7 +220,11 @@ class Editor:
     returns = []
     namerecursive = ''
     isrecursive = False
-    
+    pathFile=''
+    comando_consola=''
+    ts_debug=TS.TablaDeSimbolos()
+    no_instruccion=0
+    ejecucion_automatica=1
 
     #CONSTRUCTOR
     def __init__(self,principal):
@@ -338,19 +348,23 @@ class Editor:
         if(len(self.tablaErrores.errores) != 0):
             self.VerReporteErrores()
 
+#-------------------------------------------------------INTERPRETE---------------------------------------
+
     #METODO PARA INTERPRETAR LAS INSTRUCCIONES
     def Interpretar(self, instrucciones, tabla):
         #try:
 
             self.stack.append('global')
+            self.concatenar('main:')
             #BUSCAR INSTRUCCIONES GLOBALES
             for x in instrucciones:
-                if   isinstance(x,Declaracion) : self.InterpretarDeclaracion(x, tabla, 'global')
-                elif isinstance(x,Printf) : self.InterpretarPrintf(x,tabla)
-                elif isinstance(x,Arreglo) : self.InterpretarArreglo(x,tabla,'global')
-                elif isinstance(x,Asignacion) : self.InterpretarAsignacion(x,tabla)
-                elif isinstance(x,Etiqueta) : self.InterpretarEtiqueta(x,tabla,'global')
-                elif isinstance(x,Goto) : self.InterpretarGoto(x,tabla,'global')
+                if   isinstance(x, Declaracion) : self.InterpretarDeclaracion(x, tabla, 'global')
+                elif isinstance(x, Printf) : self.InterpretarPrintf(x, tabla)
+                elif isinstance(x, Arreglo) : self.InterpretarArreglo(x, tabla, 'global')
+                elif isinstance(x, Asignacion) : self.InterpretarAsignacion(x, tabla)
+                elif isinstance(x, Etiqueta) : self.InterpretarEtiqueta(x, tabla, 'global')
+                elif isinstance(x, Goto) : self.InterpretarGoto(x, tabla, 'global')
+                elif isinstance(x, Struct) : self.InterpretarStruct(x, tabla, 'global')
             
             #BUSCAR EL MAIN
             for x in instrucciones:
@@ -376,22 +390,25 @@ class Editor:
     #METODO PARA INTERPRETAR INSTRUCCIONES INTERNAS
     def InterpretarIns(self, lista, tabla, nombre):
         for x in lista:
-            if   isinstance(x,Declaracion)  : self.InterpretarDeclaracion(x, tabla, nombre)
-            elif isinstance(x,Printf)       : self.InterpretarPrintf(x,tabla)
-            elif isinstance(x,Arreglo)      : self.InterpretarArreglo(x,tabla,nombre)
-            elif isinstance(x,Asignacion)   : self.InterpretarAsignacion(x,tabla)
-            elif isinstance(x,While)        : self.InterpretarWhile(x,tabla,nombre)
-            elif isinstance(x,Dowhile)      : self.InterpretarDowhile(x,tabla,nombre)
-            elif isinstance(x,Etiqueta)     : self.InterpretarEtiqueta(x,tabla,nombre)
-            elif isinstance(x,Goto)         : self.InterpretarGoto(x,tabla,nombre)
-            elif isinstance(x,If)           : self.InterpretarIf(x,tabla,nombre)
-            elif isinstance(x,Switch)       : self.InterpretarSwitch(x,tabla,nombre)
-            elif isinstance(x,Return)       : self.InterpretarReturn(x,tabla)
-            elif isinstance(x,Break)        : self.InterpretarBreak(x,tabla)
-            elif isinstance(x,Continue)     : self.InterpretarContinue(x,tabla)
-            elif isinstance(x,Operacion)    : self.InterpretarOperacion(x,tabla)
-            elif isinstance(x,For)          : self.InterpretarFor(x,tabla,nombre)
-            elif isinstance(x,Funcion)      : self.errorSemantico('CORE_DUMPED',x.linea,'No se pueden hacer funciones anidadas')
+            if   isinstance(x, Declaracion)  : self.InterpretarDeclaracion(x, tabla, nombre)
+            elif isinstance(x, Printf)       : self.InterpretarPrintf(x,tabla)
+            elif isinstance(x, Arreglo)      : self.InterpretarArreglo(x,tabla,nombre)
+            elif isinstance(x, Asignacion)   : self.InterpretarAsignacion(x,tabla)
+            elif isinstance(x, While)        : self.InterpretarWhile(x,tabla,nombre)
+            elif isinstance(x, Dowhile)      : self.InterpretarDowhile(x,tabla,nombre)
+            elif isinstance(x, Etiqueta)     : self.InterpretarEtiqueta(x,tabla,nombre)
+            elif isinstance(x, Goto)         : self.InterpretarGoto(x,tabla,nombre)
+            elif isinstance(x, If)           : self.InterpretarIf(x,tabla,nombre)
+            elif isinstance(x, Switch)       : self.InterpretarSwitch(x,tabla,nombre)
+            elif isinstance(x, Return)       : self.InterpretarReturn(x,tabla)
+            elif isinstance(x, Break)        : self.InterpretarBreak(x,tabla)
+            elif isinstance(x, Continue)     : self.InterpretarContinue(x,tabla)
+            elif isinstance(x, Operacion)    : self.InterpretarOperacion(x,tabla)
+            elif isinstance(x, For)          : self.InterpretarFor(x,tabla,nombre)
+            elif isinstance(x, Struct)       : self.InterpretarStruct(x, tabla, nombre)
+            elif isinstance(x, NewStruct)    : self.InterpretarNewStruct(x, tabla, nombre)
+            elif isinstance(x, ToStruct)    : self.InterpretarToStruct(x, tabla, nombre)
+            elif isinstance(x, Funcion)      : self.errorSemantico('CORE_DUMPED',x.linea,'No se pueden hacer funciones anidadas')
             
     #METODO PARA INTERPRETAR UNA FUNCION
     def InterpretarFuncion(self, funcion, tabla):
@@ -427,7 +444,7 @@ class Editor:
         simbolo = tablaSimbolos.Simbolo(num, 'main', '', 'int', 'Funcion', 'global')
         tabla.newSimbolo(simbolo)
         self.stack.append('main')
-        self.concatenar('main:')
+        
         self.InterpretarIns(ins,tabla,'main')
         self.concatenar('exit;')
         self.stack.pop()
@@ -669,18 +686,18 @@ class Editor:
                 restipo = resultado[0]
                 resval = resultado[1]
                 tprint = 'print(' + str(resval) + ');'
-                if(restipo == 'int' and ('%d' in newval or '%i' in newval)):
+                if((restipo == 'int' or restipo == 'void') and ('%d' in newval or '%i' in newval)):
                     if('%d' in newval):
                         newval = newval.replace('%d','',1)
                     elif('%i' in newval):
                         newval = newval.replace('%i','',1)
                     toconcat += tprint+'\n'
                     toconcat += 'print("\\n");'+'\n'
-                elif((restipo == 'float' or restipo =='double') and '%f' in newval):
+                elif((restipo == 'float' or restipo == 'double' or restipo == 'void') and '%f' in newval):
                     toconcat += tprint+'\n'
                     toconcat += 'print("\\n");'+'\n'
                     newval = newval.replace('%f','',1)
-                elif(restipo == 'char' and '%c' in newval):
+                elif((restipo == 'char' or restipo == 'void') and '%c' in newval):
                     if('$' in str(resval)):
                         tprint = "print(" + str(resval) + ");"
                     else:
@@ -688,7 +705,7 @@ class Editor:
                     toconcat += tprint + '\n'
                     toconcat += 'print("\\n");'+'\n'
                     newval = newval.replace('%c','',1)
-                elif(restipo == 'char*' and '%s' in newval):
+                elif((restipo == 'char*' or restipo == 'void') and '%s' in newval):
                     toconcat += tprint+'\n'
                     toconcat += 'print("\\n");'+'\n'
                     newval = newval.replace('%s','',1)
@@ -751,6 +768,69 @@ class Editor:
                     self.errorSemantico('VARIABLE_ERROR',ins.linea,'La variable ya ha sido declarada anteriormente')
             #except:
              #   self.errorSemantico('TYPE_ERROR',ins.linea,'No se pudo asignar el valor (type)')
+
+    #METODO PARA INTERPRETAR UN STRUCT
+    def InterpretarStruct(self,ins,tabla,ambito):
+        idstruct = ins.id
+        listains = ins.lista
+        temporal = self.newTemp()
+        num = self.getId()
+        valor = []
+        self.concatenar(temporal + ' = array();')
+        for ins in listains:
+            if isinstance(ins, Declaracion):
+                tipo = ins.tipo
+                for nombre in ins.nombres:
+                    valor.append((tipo,nombre))
+            elif isinstance(ins, Arreglo):
+                tipo = ins.tipo
+                nombre = ins.nombre
+                dimensiones = ins.dimensiones
+                valor.append((tipo,nombre,'array'))
+            else:
+                self.errorSemantico('INSTRUCTION_ERROR',ins.linea,'en un struct solo se declaran variables')
+        simbolo = tablaSimbolos.Simbolo(num, idstruct, temporal, 'STRUCT', valor, ambito, [])
+        tabla.newSimbolo(simbolo)
+
+    #CLASE QUE MANEJA LA DECLARACION DE UN STRUCT
+    def InterpretarNewStruct(self, ins, tabla, ambito):
+        sim = self.BuscarSimbolo(ins.idstruct,tabla)
+        if sim is None:
+            self.errorSemantico('VARIABLE_ERROR',ins.linea,'La variable no existe')
+        else:
+            if(sim.tipo == 'STRUCT'):
+                num = self.getId()
+                simbolo = tablaSimbolos.Simbolo(num, ins.idvar, '', sim.nombre, len(sim.dimension), ambito)
+                sim.dimension.append(len(sim.dimension))
+                tabla.newSimbolo(simbolo)
+            else:
+                self.errorSemantico('TYPE_ERROR',ins.linea,'La variable no es un struct')
+
+    #CLASE QUE MANEJA LA ASIGNACION A UN STRUCT
+    def InterpretarToStruct(self,ins,tabla,ambito):
+        sim = self.BuscarSimbolo(ins.id,tabla)
+        if sim is None:
+            self.errorSemantico('VARIABLE_ERROR',ins.linea,'no es parte del struct')
+        else:
+            struct = self.BuscarSimbolo(sim.tipo,tabla)
+            temp = struct.temporal
+            asig = ins.asigna
+            parte = asig.paravar
+            valor = self.InterpretarOperacion(asig.valor,tabla)
+            valtipo = valor[0]
+            valval = valor[1]
+            if(asig.dimensiones is None):
+                if(valtipo == 'char'):
+                    valval = "'"+valval+"'"
+                self.concatenar(temp + "[" + str(sim.valor) + "]['"+parte+"'] = " + str(valval) + ';')
+            else:
+                toconcat = temp + "[" + str(sim.valor) + "]['" + parte + "']"
+                for dimension in asig.dimensiones:
+                    posicion = self.InterpretarOperacion(dimension,tabla)
+                    val = posicion[1]
+                    toconcat += '[' + str(val) + ']'
+                toconcat += ' = ' + str(valval) + ';'
+                self.concatenar(toconcat)
 
     #METODO PRA INTERPRETAR UNA ASIGNACION
     def InterpretarAsignacion(self, ins, tabla):
@@ -825,21 +905,31 @@ class Editor:
             ide = self.getId()
             temporal = self.newTemp()
             #TIPO ID LISTADIMENSIONES ;
-            if(type(dimensiones) is list):
-                numdim = len(dimensiones)
-                dims = []
-                for x in dimensiones:
-                    if(type(x) is str):
-                        dims.append(100)
-                    else:
-                        val = self.InterpretarOperacion(x, tabla)
-                        newtipo = val[0]
-                        newval = val[1]
-                        dims.append(newval)
-                        
-                self.concatenar(temporal + '=' + 'array();')
-                if(listaval is not None):
+            numdim = len(dimensiones)
+            dims = []
+            for x in dimensiones:
+                if(type(x) is str):
+                    dims.append(100)
+                else:
+                    val = self.InterpretarOperacion(x, tabla)
+                    newtipo = val[0]
+                    newval = val[1]
+                    dims.append(newval)
                     
+            self.concatenar(temporal + '=' + 'array();')
+            if(listaval is not None):
+                if(type(listaval) is not list):
+                    resultado = self.InterpretarOperacion(listaval,tabla)
+                    valor = resultado[1]
+                    tipo = 'char*'
+                    simbolo = tablaSimbolos.Simbolo(ide, nombre, temporal, tipo, valor, ambito)
+                    tabla.newSimbolo(simbolo)
+                    if('$' in valor):
+                        self.concatenar(temporal + ' = ' + valor + ';')
+                    else:    
+                        self.concatenar(temporal + ' = ' + "'" + valor + "';")
+                    return
+                else:
                     for x in range(0,len(listaval)):
                         for y in range(0,len(listaval[x])):
                             resultado = self.InterpretarOperacion(listaval[x][y],tabla)
@@ -862,20 +952,12 @@ class Editor:
                                         self.errorSemantico('INDEX_ERROR',ins.linea,'Exeso de elementos en el inicializador del array')
                             else:
                                 self.errorSemantico('TYPE_ERROR',ins.linea,'Los elementos del arreglo deben ser del mismo tipo')
-                for x in range(0,len(dims)):
-                    if(dims[x] == 100):
-                        dims[x] = None
-                simbolo = tablaSimbolos.Simbolo(ide, nombre, temporal, tipo, valor, ambito, dims)
-                tabla.newSimbolo(simbolo)
-                
-            #TIPO ID [] = EXPRESION ;
-            else:
-                resultado = self.InterpretarOperacion(dimensiones,tabla)
-                valor = resultado[1]
-                tipo = 'char*'
-                simbolo = tablaSimbolos.Simbolo(nombre,temporal,tipo,valor,ambito)
-                tabla.newSimbolo(simbolo)
-                self.concatenar(temporal + '=' + "'" + valor + "';")
+            
+            for x in range(0,len(dims)):
+                if(dims[x] == 100):
+                    dims[x] = None
+            simbolo = tablaSimbolos.Simbolo(ide, nombre, temporal, tipo, valor, ambito, dims)
+            tabla.newSimbolo(simbolo)
         else:
             self.errorSemantico('VARIABLE_ERROR',ins.linea,'La variable ya ha sido declarada anteriormente')
 
@@ -888,6 +970,8 @@ class Editor:
         elif(tipo1 == 'double' and (tipo2 == 'double' or tipo2 == 'float')):
             return True
         elif(tipo1 == 'char' and tipo2 == 'char'):
+            return True
+        elif(tipo2 == 'void'):
             return True
         else:
             return False
@@ -1373,6 +1457,41 @@ class Editor:
             tempstack.pop()
       
             return('int','$v0')
+        elif isinstance(operacion, Referencia):
+            resultado = self.InterpretarOperacion(operacion.exp,tabla)
+            restipo = resultado[0]
+            resval = resultado[1]
+            tostr = '&'+str(resval)
+            return(restipo,tostr)
+        elif isinstance(operacion, fromStruct):
+            objeto = self.BuscarSimbolo(operacion.ide,tabla)
+            if objeto is not None:
+                objetoname = objeto.nombre
+                objetonum = objeto.valor
+                objetotipo = objeto.tipo
+                struct = self.BuscarSimbolo(objetotipo,tabla)
+                if struct is not None:
+                    variables = struct.valor
+                    toreturn = struct.temporal + '['+ str(objetonum) + ']'
+                    tipotoreturn = 'void'
+                    if isinstance(operacion.exp, Acceso):
+                        name = operacion.exp.id
+                        toreturn += "['" + name + "']"
+                        for x in operacion.exp.lista:
+                            posicion = self.InterpretarOperacion(x,tabla)
+                            postipo = posicion[0]
+                            toreturn += '[' + str(posicion[1]) + ']' 
+                    elif isinstance(operacion.exp, OpId):
+                        name = operacion.exp.id
+                        toreturn += "['" + name + "']"
+                    else:
+                        self.errorSemantico('INVALID_INSTRUCTION', operacion.linea, 'No se puede accesar al struc de esta forma')    
+                    return(tipotoreturn,toreturn)
+                else:
+                    self.errorSemantico('UNDEFINED_STRUCT', operacion.linea, 'El struct no existe')
+            else:
+                self.errorSemantico('UNDEFINED_VARIABLE', operacion.linea, 'La variable no existe')
+
         else:
             self.errorSemantico('OPERATION_ERROR',operacion.linea,'No se pudo hacer ninguna operacion')
 
@@ -1397,6 +1516,8 @@ class Editor:
         new = texto + str(self.numtag)
         self.numtag += 1
         return new 
+
+#-------------------------------------------------------------------------------------------------
 
     #METODO PARA AVANZAR EN EL DEBUG
     def SiguientePaso(self):
@@ -1571,43 +1692,36 @@ class Editor:
         self.numvar += 1
         return num
 
-
-    pathFile=''
-    comando_consola=''
-    ts_debug=TS.TablaDeSimbolos()
-    no_instruccion=0
-    ejecucion_automatica=1
-
+    #METODO PARA EJECUTAR EL ANALISIS ASCENDENTE DE AUGUS EN EL INTERPRETE DE AUGUS
     def EjecutarAugus(self, texto):
         global ts_debug, no_instruccion, waitForCommand, ejecucion_automatica
         ejecucion_automatica = 1
         waitForCommand = 0
-        Inter.inicializarGUI(self.consola)
         Inter.limpiarValores()
-        Inter.inicializarEjecucionAscendente(texto)
+        Inter.inicializarEjecucionAscendente(texto, self.consola)
         Inter.inicializarTS()
-        i=0
+        i = 0
         while i<len(Inter.instrucciones):
-            if waitForCommand==0 or waitForCommand==2: #0=Sin Entrada, 1=Esperando, 2=Comando Ingresado
+            if waitForCommand == 0 or waitForCommand == 2: #0=Sin Entrada, 1=Esperando, 2=Comando Ingresado
                 if i<len(Inter.instrucciones) :
-                    is_asig=Inter.instrucciones[i]
+                    is_asig = Inter.instrucciones[i]
                     if isinstance(is_asig,Asignacion): 
                         # COMANDO PARA LEER DE CONSOLA
-                        if isinstance(is_asig.valor,Read) and waitForCommand==0:
-                            waitForCommand=1
-                            no_instruccion=i
+                        if isinstance(is_asig.valor,Read) and waitForCommand == 0:
+                            waitForCommand = 1
+                            no_instruccion = i
                             return None
                     #EJECUTAR INSTRUCCION
-                    instr_temp=Inter.ejecutarInstruccionUnitaria(1,i)
+                    instr_temp = Inter.ejecutarInstruccionUnitaria(1,i)
                     if instr_temp is not None:
-                        if instr_temp==-10 : # EXIT
-                            i=len(Inter.instrucciones)
+                        if instr_temp == -10 : # EXIT
+                            i = len(Inter.instrucciones)
                         else: #GOTO
-                            i=instr_temp
-                    waitForCommand=0
+                            i = instr_temp
+                    waitForCommand = 0
                 else:
-                    MessageBox.showinfo("Finalizado","Ultima instruccion ejecutada.")
-            i=i+1
+                    messagebox.showinfo("Finalizado","Ultima instruccion ejecutada.")
+            i = i + 1
 
     #METODO PARA LIMPIAR LAS TABLAS Y VARIABLES
     def reset(self):
@@ -1627,7 +1741,7 @@ class Editor:
         self.ismain = True
         self.iscall = False
 
-#--------------------------------------loop para mantener la ejecucion del editor
+#--------------------------------------LOOP PARA MANTENAR LA EJECUCION DEL PROGRAMA
 if __name__ == "__main__":
     principal = gui.Tk()
     principal.state("zoomed")

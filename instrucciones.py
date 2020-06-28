@@ -42,6 +42,30 @@ class Arreglo(Instruccion):
         self.listavalores = listavalores
         self.linea = linea
         
+#CLASE QUE MANEJA LOS STRUCTS
+class Struct(Instruccion):
+    #CONSTRUCTOR RECIBE EL IDENTIFICADOR Y LA LISTA DE DECLARACIONES
+    def __init__(self,id,lista,linea):
+        self.id = id
+        self.lista = lista
+        self.linea = linea
+
+#CLASE QUE MANEJA UN NUEVO STRUCT
+class NewStruct(Instruccion):
+    #CONSTRUCTOR RECIBE EL ID DEL STRUCT Y EL ID DE LA VARIABLE
+    def __init__(self,idstruct,idvar,linea):
+        self.idstruct = idstruct
+        self.idvar = idvar
+        self.linea = linea
+
+#CLASE PARA ASIGNAR UN VALOR A UNA PARTE DEL STRUCT DEL STRUCT
+class ToStruct(Instruccion):
+    #CONSTRUCTOR RECIBE EL ID DEL STRUCT Y UNA ASIGNACION 
+    def __init__(self,id,asigna,linea):
+        self.id = id
+        self.asigna = asigna
+        self.linea = linea
+
 #CLASE QUE MANEJA LOS CICLOS WHILE
 class While(Instruccion):
     #CONSTRUCTOR RECIBE CONDICION Y LA LISTA DE INSTRUCCIONES
@@ -273,4 +297,14 @@ class Acceso(Operacion):
         self.id = id
         self.lista = lista
         self.linea = linea
+
+class Referencia(Operacion):
+    def __init__(self, exp, linea):
+        self.exp = exp
+        self.linea = linea
         
+class fromStruct(Operacion):
+    def __init__(self, ide, exp, linea):
+        self.ide = ide
+        self.exp = exp
+        self.linea = linea

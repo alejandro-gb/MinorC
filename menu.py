@@ -16,11 +16,7 @@ from instruccionesAugus import *
 
 #==============================================================
 
-pathFile=''
-comando_consola=''
-ts_debug=TS.TablaDeSimbolos()
-no_instruccion=0
-ejecucion_automatica=1
+
 
 
 

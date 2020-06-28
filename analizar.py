@@ -1,5 +1,4 @@
-#----------------------------------------ANALIZADOR LEXICO
-
+#----------------------------------------ANALIZADOR LEXICO PARA MINOR C
 #DICCIONARIO CON LAS PALABRAS RESERVADAS
 reservadas = {
     'break':'BREAK',
@@ -77,8 +76,7 @@ tokens = [
     'DECIMAL',
     'IDENTIFICADOR',
     'COMENTARIO',
-    'COMENTARIOMULTI',
-
+    'COMENTARIOMULTI'
 ] + list(reservadas.values())
 
 #DEFINICION DE TOKENS
@@ -157,6 +155,7 @@ def t_CADENA(t):
     t.value = t.value[1:-1]
     return t 
 
+#METODO PARA ACEPTAR UN SOLO CARACTER ENTRE COMILLAS SIMPLES
 def t_CARACTER(t):
     r"'.'"
     t.value = t.value[1:-1]
@@ -167,12 +166,12 @@ t_ignore = " \t\v\f"
 
 #METODO PARA ACEPTAR UN COMENTARIO
 def t_COMENTARIO(t):
-    r'//.*\n'
+    r'//.+\n'
     t.lexer.lineno += 1
 
 #METODO PARA ACEPTAR UN COMENTARIO MULTILINEA
 def t_COMENTARIOMULTI(t):
-    r'/\*(.|\n*)?\*/'
+    r'/\*(.|\n)*?\*/'
     t.lexer.lineno += t.value.count('\n')
 
 #METODO PARA ACEPTAR UNA NUEVA LINEA Y SUMAR LA CUENTA
@@ -180,10 +179,9 @@ def t_newline(t):
     r'\n+'
     t.lexer.lineno += t.value.count("\n")
 
-#METODO PARA RECONOCER UN ERROR
+#METODO PARA RECONOCER UN ERROR LEXICO
 def t_error(t):
     desc = 'El caracter: ' + str(t.value[0]) + ' no es valido'
-    print(desc)
     nuevo = errores.Error('LEXICO',desc, t.lexer.lineno, t.lexpos)
     main.Editor.tablaErrores.newError(nuevo)
     t.lexer.skip(1)
@@ -211,8 +209,10 @@ precedence = (
     ('left','PARA','PARC','CORCHETEA','CORCHETEC','PUNTO','UINC','UDEC')
 )
 
-#---------------------------------ANALIZADOR SINTACTICO
+#----------------------------------------------ANALIZADOR SINTACTICO
 from instrucciones import *
+
+#GRAMATICA
 
 def p_start(t):
     'start : instrucciones'
@@ -244,8 +244,24 @@ def p_instruccion(t):
                    | return
                    | break
                    | continue
-                   | expresion'''
+                   | struct
+                   | declastruct
+                   | asignastruct
+                   | expresion
+                   | scanf'''
     t[0] = t[1]
+
+def p_struct(t):
+    'struct : STRUCT IDENTIFICADOR LLAVEA instrucciones LLAVEC PUNTOYCOMA'
+    t[0] = Struct(t[2],t[4],t.lexer.lineno)
+
+def p_declastruct(t):
+    'declastruct : STRUCT IDENTIFICADOR IDENTIFICADOR PUNTOYCOMA'
+    t[0] = NewStruct(t[2],t[3],t.lexer.lineno)
+
+def p_asignastruct(t):
+    'asignastruct : IDENTIFICADOR PUNTO asignacion'
+    t[0] = ToStruct(t[1],t[3],t.lexer.lineno)
 
 def p_nula(t):
     'nula : PUNTOYCOMA'
@@ -266,6 +282,10 @@ def p_continue(t):
 def p_prinf(t):
     'printf : PRINTF PARA listaprint PARC PUNTOYCOMA'
     t[0] = Printf(t[3],t.lexer.lineno)
+
+def p_scanf(t):
+    'scanf : SCANF'
+    t[0] = t[1]
 
 def p_listprint(t):
     'listaprint : listaprint COMA expresion'
@@ -306,13 +326,18 @@ def p_arreglo(t):
     'arreglo : tipo IDENTIFICADOR lista_dimension PUNTOYCOMA'
     t[0] = Arreglo(t[1], t[2], t[3], None, t.lexer.lineno)
 
-def p_arreglostr(t):
+def p_arregloinicializado(t):
     'arreglo : tipo IDENTIFICADOR lista_dimension IGUAL inicializacion PUNTOYCOMA'
     t[0] = Arreglo(t[1], t[2], t[3], t[5], t.lexer.lineno)
 
+
 def p_inicializacion(t):
-    'inicializacion : LLAVEA listaini LLAVEC'
-    t[0] = t[2]
+    '''inicializacion : LLAVEA listaini LLAVEC
+                      | expresion'''
+    if(t[1] == '{'):
+        t[0] = t[2]
+    else:
+        t[0] = t[1]
 
 def p_listaini(t):
     'listaini : listaini COMA inidimension'
@@ -467,7 +492,7 @@ def p_inicializar(t):
     '''inicializacion : declaracion
                       | asignacion'''
     t[0] = t[1]
-#------------------------------EXPRESIONES
+#-----------------------------------------------EXPRESIONES
 def p_exprexion(t):
     '''expresion : expresion MAS expresion
                  | expresion MENOS expresion
@@ -599,17 +624,23 @@ def p_acceso(t):
     'expresion : IDENTIFICADOR lista_dimension'
     t[0] = Acceso(t[1],t[2],t.lexer.lineno)
 
+def p_referencia(t):
+    '''expresion : ANPERSAND expresion
+                 | POR expresion'''
+    t[0] = Referencia(t[2],t.lexer.lineno)
+
+def p_fromStruct(t):
+    'expresion : IDENTIFICADOR PUNTO expresion'
+    t[0] = fromStruct(t[1],t[3],t.lexer.lineno)    
+
+
 #METODO PARA MANEJAR LOS ERRORES SINTACTICOS
 def p_error(t):
     if t:
         desc = 'El token: ' + str(t.value) + ' no se esperaba'
         nuevo = errores.Error('SINTACTICO',desc,t.lexer.lineno,t.lexpos)
         main.Editor.tablaErrores.newError(nuevo)
-        while True:
-            tk = parser.token()
-            if not tk or tk.type == 'PUNTOYCOMA':
-                break
-        #parser.errok()
+        parser.errok()
     else:
         desc = 'Error sintactico al final del archivo'
         nuevo = errores.Error('SINTACTICO',desc,'EOF','EOF')
@@ -620,7 +651,7 @@ def p_error(t):
 import ply.yacc as yacc
 parser = yacc.yacc()
 
-#METODO DEL PARSER
+#METODO PARA HACER EL RECONOCIENTO RECIBE EL TEXTO A RECONOCER
 def parse(input):
     lexer.lineno = 1
     parsear = parser.parse(input, lexer = lexer)

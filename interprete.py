@@ -1,4 +1,4 @@
-
+#-------------------------------------------IMPORTS
 import gramatica as g
 import ts as TS
 from expresiones import *
@@ -8,11 +8,26 @@ import threading
 import time
 from erroresA import *
 import re
+from graphviz import Graph
+from graphviz import escape
+from graphviz import Digraph, nohtml
+from graphviz import Digraph, nohtml
+
+#-----------------------------------------------VARIABLES GLOBALES
 
 indice = 0
 tag=''
+i=0
 LisErr=TablaError([])
+ts_global = TS.TablaDeSimbolos()
+instrucciones = []
+editor=None
+consola=None
+content=''
+dot=Graph('AST',format='png')
+dot.attr('node', shape='box')
 
+#-------------------------------------------------INTERPRETE AUGUS
 def remplazar_cadena(cadena,indice,new_char):
     result=''
     if len(cadena)<indice :
@@ -30,8 +45,6 @@ def remplazar_cadena(cadena,indice,new_char):
     elif len(cadena)==indice:
         result=cadena+new_char
     return result
-
-
 
 def get_primer_elemento_arr(id,ts):
     simbolo=ts.obtener(id)
@@ -85,7 +98,6 @@ def procesar_definicion(asig, ts) :
                 simbolo.referencia.append(indice)
             ts.actualizar(asig.variable.id,tipo_dato,valor)
             
-    
 def procesar_definicion_arr(asig,ts):
     global tag
     tipo_var=asig.id
@@ -107,7 +119,6 @@ def resolver_parametros(params,ts) :
             val=procesar_expresion(param.expresion,ts)
         result.append(val)
     return result
-
 
 def nueva_dimension(parametros, dim_original,index=0):
     retorno=[]
@@ -234,7 +245,6 @@ def procesar_asign_arr(asig_arr_st,ts):
             simbolo.referencia.append(indice)
         ts.actualizar(tipo_var.id,TS.TIPO_DATO.ARREGLO,diccionario,dim)
 
-
 def cambiar_caracter_cadena(id,cadena,index,new_value,ts):
     if isinstance(index,int) : 
         index=int(index)
@@ -253,7 +263,6 @@ def cambiar_caracter_cadena(id,cadena,index,new_value,ts):
         consola.insert('end','>>Error: Indice debe ser int '+id+'\n>>')
         newErr=ErrorRep('Semantico','Indice debe ser int '+str(id),indice)
         LisErr.agregar(newErr)
-
 
 def procesar_if(instr, ts,index) :
     val = procesar_expresion(instr.expLogica, ts)
@@ -361,7 +370,6 @@ def procesar_relacional(expresion,ts):
         LisErr.agregar(newErr)
         return None
     
-
 def procesar_logica(expresion,ts) :
     val=procesar_expresion(expresion.exp1,ts)
     val2=procesar_expresion(expresion.exp2,ts)
@@ -380,7 +388,6 @@ def procesar_logica(expresion,ts) :
         consola.insert('end','>>Error: Expresion logica con tipos incompatibles'+str(expresion.operador)+'\n>>')
         newErr=ErrorRep('Semantico','Expresion logica con tipos incompatibles '+str(expresion.operador),indice)
         LisErr.agregar(newErr)
-
 
 def procesar_accesoarray(acceso_array,ts) :
     tipo_var=acceso_array.tipoVar
@@ -619,7 +626,6 @@ def procesar_expresion(expresiones,ts) :
     else: 
         print('Error:Expresion no reconocida')
 
-
 def ejecutarGoTo(goto_instr,ts):
     global instrucciones,indice
     for i in range(0,len(instrucciones)) :
@@ -675,7 +681,6 @@ def wait_for_command():
     #consola.insert('end','>>')
     #return comando_consola
     
-
 def procesar_read() :
     
     global comando_consola
@@ -748,7 +753,6 @@ def get_tipo_var(asig,tipo_dato) :
         if asig.id.tipoVar == tipo_dato:
             return asig.id.id
 
-
 def save_tag(parametros,etiq,ts,indexS) :
     if len(parametros)>0 :
         fun=ts.obtenerFuncion(etiq)
@@ -768,7 +772,6 @@ def change_proc_to_fun(tags, ts) :
         if fun is not None:
             ts.actualizarFuncion(fun.id,'funcion')
             break
-
 
 def fill_tags(instrs,ts) :
     etiq=''
@@ -809,86 +812,71 @@ def comprobarMain(instrucciones):
     LisErr.agregar(newErr)
     return False
 
-
-##------------------------------------------
-ts_global = TS.TablaDeSimbolos()
-instrucciones = []
-editor=None
-consola=None
-content=''
-##------------------------------------------
+#-------------------------------------EJECUTAR EL ANALISIS
+#METODO PARA REINICIAR LAS VARIABLES GLOBALES
 def limpiarValores():
-    global ts_global, instrucciones,indice,tag,LisErr, dot
-    ts_global=TS.TablaDeSimbolos
-    instrucciones= []
+    global ts_global, instrucciones, indice, tag, LisErr, dot
+    ts_global = TS.TablaDeSimbolos
+    instrucciones = []
     indice = 0
-    tag=''
-    LisErr=TablaError([])
-    dot=Graph('AST',format='png')
+    tag = ''
+    LisErr = TablaError([])
+    dot = Graph('AST',format='png')
 
-def inicializarEjecucionAscendente(contenido) :
-    global LisErr, instrucciones, ts_global
-
+#METODO PARA EJECUTAR EL TEXTO
+def inicializarEjecucionAscendente(contenido,tconsola) :
+    global LisErr, instrucciones, ts_global, consola
+    consola = tconsola
     ts_global = TS.TablaDeSimbolos()
     instrucciones = g.parse(contenido,LisErr)
 
-
-def inicializarGUI(txtconsola):
-    global editor,consola
-    consola = txtconsola
-
+#METODO PARA INICIALIZAR LA TABLA DE SIMBOLOS
 def inicializarTS():
     global instrucciones,ts_global,tag
-    save_main('main',ts_global,1)
-    fill_tags(instrucciones,ts_global)
-    consola.insert('end',"\n>> ********  Start  ******** \n>>")
-    tag='main'
+    save_main('main', ts_global, 1)
+    fill_tags(instrucciones, ts_global)
+    consola.insert('end',"\n>> INICIANDO EJECUCION \n>>")
+    tag = 'main'
     if not comprobarMain(instrucciones):
-        consola.insert('end',">>Error: Verifique errores lexicos y sintacticos\n>>")
+        consola.insert('end',">>Error: SE PRODUJERON ERRORES EN LA EJECUCION INTERMEDIA\n>>")
     
+#METODO PARA EJECUTAR UNA SOLA INSTRUCCION EN EL DEBUG
 def ejecutarInstruccionUnitaria(debugMode,indexDeb):
     global instrucciones,ts_global
     if instrucciones is not None:
-        indice_ret=procesar_instrucciones(instrucciones,ts_global,debugMode,indexDeb)   
+        indice_ret = procesar_instrucciones(instrucciones,ts_global,debugMode,indexDeb)   
         return indice_ret
 
+#METODO PARA HACER EL REPORTE DE SIMBOLOS
 def generarReporteTS():
     tabla_simbolos()
 
+#METODO PARA HACER EL REPORTE DE ERRORES
 def generarReportesErrores():
     reporte_errores()
 
+#METODO PARA VER EL REPORTE GRAMATICAL
 def generarReporteGramaticalAsc():
     g.dot.view()
 
+#METODO PARA GENERAR EL AST
 def generarReporteAST():
     global dot
     dot=Graph('AST',format='png')
     dot.attr('node', shape='box')
     graficarAST()
 
+#METODO PARA GENERAR EL REPORTE DE ERRORES Y LA TABLA DE SIMBOLOS
 def generarReportes():    
-    #graficarAST(instrucciones)
     tabla_simbolos()
     reporte_errores()
 
-#----------------------------------------------------------
-#----------------------------------------------------------
-#           GRAFICAR AST
-#----------------------------------------------------------
-#----------------------------------------------------------
-from graphviz import Graph
-from graphviz import escape
+#--------------------------------------GRAFICAR AST
 
-i=0
 def inc():
     global i
     i +=1
     return i
-
-dot=Graph('AST',format='png')
-#dot.attr(splines='false')
-dot.attr('node', shape='box')
 
 def graficarEtiqueta(instrs):
     id=inc()
@@ -919,7 +907,6 @@ def graficarPrint(instruccion):
     dot.node(str(id),'instruccion: Print ( expresion )')
     dot.edge(str(id),str(id+1))
     graficar_expresion(instruccion.valor)
-
 
 def graficar_if(instr) :
     id=inc()
@@ -1019,9 +1006,7 @@ def graficar_accesoarray(expresion):
         id=inc()
         dot.edge(str(new_padre),str(id+1))
         graficar_expresion(item.expresion)
-
-
-    
+  
 def get_tipo_dato(tipo):
 
     if tipo==TS.TIPO_DATO.ENTERO:
@@ -1093,7 +1078,6 @@ def graficar_expresion(expresiones):
         dot.edge(str(id),str(id+1))
         graficar_expresion(expresiones.variable)
 
-
 def graficar_Asignacion(asgin):
     id=inc()
     padre=id
@@ -1144,7 +1128,6 @@ def graficar_asign_arr(instr):
     dot.edge(str(padre),str(id+1)) 
     graficar_expresion(instr.valor)
 
-
 def graficarAST():
     id=0
     padre=id
@@ -1167,13 +1150,7 @@ def graficarAST():
         elif isinstance(instrucciones[i],If): graficar_if(instrucciones[i])
     dot.view()
 
-#----------------------------------------------------------
-#----------------------------------------------------------
-#           TABLA DE SIMBOLOS
-#----------------------------------------------------------
-#----------------------------------------------------------
-from graphviz import Digraph, nohtml
-
+#---------------------------------------TABLA DE SIMBOLOS
 def tabla_simbolos():
     ts=ts_global
     SymbolT = Digraph('g', filename='btree.gv',
@@ -1203,14 +1180,7 @@ def tabla_simbolos():
 
     SymbolT.view()
 
-#----------------------------------------------------------
-#----------------------------------------------------------
-#----------------------------------------------------------
-#           ERROREEEEEES
-#----------------------------------------------------------
-#----------------------------------------------------------
-from graphviz import Digraph, nohtml
-
+#--------------------------------------REPORTE DE ERRORES
 def reporte_errores():
     ErrReporte = Digraph('g', filename='berrores.gv', format='png',
                 node_attr={'shape': 'plaintext', 'height': '.1'})
