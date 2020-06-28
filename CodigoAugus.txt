@@ -1,6 +1,3 @@
 main:
-$t0 = read();
-print($t0);
-print("\n");
-
+$t0 = 5;
 exit;

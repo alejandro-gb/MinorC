@@ -16,6 +16,7 @@ import errores
 import ts as TS
 from instruccionesAugus import *
 import interprete as Inter
+import gramatical
 from instrucciones import *
 
 
@@ -207,6 +208,7 @@ class Editor:
     resultado = ''
     tablaGlobal = tablaSimbolos.TablaSimbolos()
     tablaErrores = errores.TablaErrores()
+    tablagramatical = gramatical.TablaGramatical()
     temp = 0
     param = 0
     numtag = 0
@@ -445,7 +447,6 @@ class Editor:
         simbolo = tablaSimbolos.Simbolo(num, 'main', '', 'int', 'Funcion', 'global')
         tabla.newSimbolo(simbolo)
         self.stack.append('main')
-        
         self.InterpretarIns(ins,tabla,'main')
         self.concatenar('exit;')
         self.stack.pop()
@@ -1553,7 +1554,50 @@ class Editor:
 
     #METODO PARA HACER EL REPORTE GRAMATICAL
     def RepGramatical(self):
-        pass
+        f = open('ReporteGr.html', "a")
+        tshtml = '''<html>
+        <head>
+        <style>
+        table {
+        width:100%;
+        }
+        table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        }
+        th, td {
+        padding: 15px;
+        text-align: left;
+        }
+        table#t01 tr:nth-child(even) {
+        background-color: #eee;
+        }
+        table#t01 tr:nth-child(odd) {
+        background-color: #fff;
+        }
+        table#t01 th {
+        background-color: green;
+        color: white;
+        }
+        </style>
+        </head>
+        <body>
+        <h2>Reporte Gramatical</h2>
+        <table id="t01">
+        <tr>
+        <th>Produccion</th>
+        <th>Regla semantica</th> 
+        </tr>'''
+        f.write(tshtml)
+        for k, v in (self.tablagramatical.producciones.items()):
+            proc = self.tablagramatical.getProduccion(k)
+            tshtml3 = '<tr><td>' + proc.produccion + '</td><td>' + proc.reglas + '</td></tr>\n'
+            f.write(tshtml3)        
+        
+        tshtml2 = '</table>\n</body>\n</html>'
+        f.write(tshtml2)
+        f.close()
+        os.system('start '+os.path.realpath('ReporteGr.html'))
 
     #METODO PARA HACER EL REPORTE DE ERRORES
     def ReporteErrores(self):
@@ -1765,13 +1809,20 @@ class Editor:
         self.numfunc = 0
         self.tablaGlobal.simbolos.clear()
         self.tablaErrores.errores.clear()
-        #analizar.lexer.lineno = 0
+        self.tablagramatical.producciones.clear()
         self.stack.clear()
         self.stackLoop.clear()
         self.stackContinue.clear()
         self.returns.clear()
         self.ismain = True
         self.iscall = False
+        try:
+            f = open('ReporteGr.html', "w")
+            f.write('')
+            f.close()
+        except:
+            messagebox.showinfo("Error","No se pudo abrir el archivo del reporte gramatical")
+
 
 #--------------------------------------LOOP PARA MANTENAR LA EJECUCION DEL PROGRAMA
 if __name__ == "__main__":
