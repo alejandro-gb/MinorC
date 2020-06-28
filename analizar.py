@@ -247,8 +247,7 @@ def p_instruccion(t):
                    | struct
                    | declastruct
                    | asignastruct
-                   | expresion
-                   | scanf'''
+                   | expresion'''
     t[0] = t[1]
 
 def p_struct(t):
@@ -282,10 +281,6 @@ def p_continue(t):
 def p_prinf(t):
     'printf : PRINTF PARA listaprint PARC PUNTOYCOMA'
     t[0] = Printf(t[3],t.lexer.lineno)
-
-def p_scanf(t):
-    'scanf : SCANF'
-    t[0] = t[1]
 
 def p_listprint(t):
     'listaprint : listaprint COMA expresion'
@@ -391,9 +386,9 @@ def p_asignacion(t):
     '''asignacion : IDENTIFICADOR signoassig expresion PUNTOYCOMA
                   | IDENTIFICADOR lista_dimension IGUAL expresion PUNTOYCOMA'''
     if(t[4] == ';'):
-        t[0] = Asignacion(t[1], t[3], t[2], t.lexer.lineno)
+        t[0] = asignacion(t[1], t[3], t[2], t.lexer.lineno)
     else:
-        t[0] = Asignacion(t[1], t[4], t[3], t.lexer.lineno,t[2])
+        t[0] = asignacion(t[1], t[4], t[3], t.lexer.lineno,t[2])
 
 def p_signoassig(t):
     '''signoassig : IGUAL
@@ -628,6 +623,10 @@ def p_referencia(t):
     '''expresion : ANPERSAND expresion
                  | POR expresion'''
     t[0] = Referencia(t[2],t.lexer.lineno)
+
+def p_expscan(t):
+    'expresion : SCANF PARA PARC'
+    t[0] = Scanf(t.lexer.lineno)
 
 def p_fromStruct(t):
     'expresion : IDENTIFICADOR PUNTO expresion'

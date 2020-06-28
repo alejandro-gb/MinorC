@@ -1,24 +1,6 @@
 main:
-$t0 = array();
-$t0[0]['nombre'] = 'Luis';
-$t0[0]['direccion'] = 'zona 5';
-$t0[0]['telefonos'][0] = 456;
-$t0[0]['telefonos'][1] = 654;
-$t0[0]['telefonos'][2] = 789;
-print('Los telefonos de Luis son: ');
-print("\n");
-$t1 = 0;
-for0:
-$t2 = $t1 < 3;
-if($t2) goto for0V;
-goto for0F;
-for0A:
-$t1 = $t1 + 1;
-goto for0;
-for0V:
-print($t0[0]['telefonos'][$t1]);
+$t0 = read();
+print($t0);
 print("\n");
 
-goto for0A;
-for0F:
 exit;

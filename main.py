@@ -250,6 +250,7 @@ class Editor:
         self.scrollbar.pack(side=gui.RIGHT, fill=gui.Y)
         self.consola.pack(side=gui.LEFT, fill=gui.BOTH, expand=True)
         self.menubar = BarraDeMenu(self)
+        self.consola.bind("<Return>",self.comando_ingresado)
 
     #CAMBIAR EL TITULO DE LA VENTANA
     def CambiarTitulo(self, name=None):
@@ -361,7 +362,7 @@ class Editor:
                 if   isinstance(x, Declaracion) : self.InterpretarDeclaracion(x, tabla, 'global')
                 elif isinstance(x, Printf) : self.InterpretarPrintf(x, tabla)
                 elif isinstance(x, Arreglo) : self.InterpretarArreglo(x, tabla, 'global')
-                elif isinstance(x, Asignacion) : self.InterpretarAsignacion(x, tabla)
+                elif isinstance(x, asignacion) : self.InterpretarAsignacion(x, tabla)
                 elif isinstance(x, Etiqueta) : self.InterpretarEtiqueta(x, tabla, 'global')
                 elif isinstance(x, Goto) : self.InterpretarGoto(x, tabla, 'global')
                 elif isinstance(x, Struct) : self.InterpretarStruct(x, tabla, 'global')
@@ -382,7 +383,7 @@ class Editor:
             if self.returns:
                 self.concatenar('regresos:')
                 for r in self.returns:
-                    self.concatenar('if($ra=='+str(r)+') goto ra'+str(r)+';')
+                    self.concatenar('if($ra == '+str(r)+') goto ra'+str(r)+';')
                 
         #except:
         #    messagebox.showerror('ERROR','NO SE INTERPRETO')
@@ -393,7 +394,7 @@ class Editor:
             if   isinstance(x, Declaracion)  : self.InterpretarDeclaracion(x, tabla, nombre)
             elif isinstance(x, Printf)       : self.InterpretarPrintf(x,tabla)
             elif isinstance(x, Arreglo)      : self.InterpretarArreglo(x,tabla,nombre)
-            elif isinstance(x, Asignacion)   : self.InterpretarAsignacion(x,tabla)
+            elif isinstance(x, asignacion)   : self.InterpretarAsignacion(x,tabla)
             elif isinstance(x, While)        : self.InterpretarWhile(x,tabla,nombre)
             elif isinstance(x, Dowhile)      : self.InterpretarDowhile(x,tabla,nombre)
             elif isinstance(x, Etiqueta)     : self.InterpretarEtiqueta(x,tabla,nombre)
@@ -407,7 +408,7 @@ class Editor:
             elif isinstance(x, For)          : self.InterpretarFor(x,tabla,nombre)
             elif isinstance(x, Struct)       : self.InterpretarStruct(x, tabla, nombre)
             elif isinstance(x, NewStruct)    : self.InterpretarNewStruct(x, tabla, nombre)
-            elif isinstance(x, ToStruct)    : self.InterpretarToStruct(x, tabla, nombre)
+            elif isinstance(x, ToStruct)     : self.InterpretarToStruct(x, tabla, nombre)
             elif isinstance(x, Funcion)      : self.errorSemantico('CORE_DUMPED',x.linea,'No se pueden hacer funciones anidadas')
             
     #METODO PARA INTERPRETAR UNA FUNCION
@@ -502,7 +503,7 @@ class Editor:
 
         if isinstance(inicio, Declaracion):
             self.InterpretarDeclaracion(inicio,tabla,nombre)
-        elif isinstance(inicio, Asignacion):
+        elif isinstance(inicio, asignacion):
             self.InterpretarAsignacion(inicio,tabla)
         self.concatenar(nombre + ':')
         resultado = self.InterpretarOperacion(condicion,tabla)
@@ -971,7 +972,7 @@ class Editor:
             return True
         elif(tipo1 == 'char' and tipo2 == 'char'):
             return True
-        elif(tipo2 == 'void'):
+        elif(tipo2 == 'void' or tipo1 == 'void'):
             return True
         else:
             return False
@@ -1491,7 +1492,8 @@ class Editor:
                     self.errorSemantico('UNDEFINED_STRUCT', operacion.linea, 'El struct no existe')
             else:
                 self.errorSemantico('UNDEFINED_VARIABLE', operacion.linea, 'La variable no existe')
-
+        elif isinstance(operacion, Scanf):
+            return('void','read()')
         else:
             self.errorSemantico('OPERATION_ERROR',operacion.linea,'No se pudo hacer ninguna operacion')
 
@@ -1701,9 +1703,9 @@ class Editor:
         Inter.inicializarEjecucionAscendente(texto, self.consola)
         Inter.inicializarTS()
         i = 0
-        while i<len(Inter.instrucciones):
+        while i < len(Inter.instrucciones):
             if waitForCommand == 0 or waitForCommand == 2: #0=Sin Entrada, 1=Esperando, 2=Comando Ingresado
-                if i<len(Inter.instrucciones) :
+                if i < len(Inter.instrucciones) :
                     is_asig = Inter.instrucciones[i]
                     if isinstance(is_asig,Asignacion): 
                         # COMANDO PARA LEER DE CONSOLA
@@ -1722,6 +1724,36 @@ class Editor:
                 else:
                     messagebox.showinfo("Finalizado","Ultima instruccion ejecutada.")
             i = i + 1
+
+    def comando_ingresado(self,event):
+        global waitForCommand
+        waitForCommand=2
+        if ejecucion_automatica == 1:
+            self.continuar_ejecucionAsc()
+
+    def continuar_ejecucionAsc(self):
+        global no_instruccion, waitForCommand
+        while no_instruccion<len(Inter.instrucciones):
+            if waitForCommand == 0 or waitForCommand == 2: #0=Sin Entrada, 1=Esperando, 2=Comando Ingresado
+                if no_instruccion<len(Inter.instrucciones) :
+                    is_asig=Inter.instrucciones[no_instruccion]
+                    if isinstance(is_asig,Asignacion): 
+                        # COMANDO PARA LEER DE CONSOLA
+                        if isinstance(is_asig.valor,Read) and waitForCommand == 0:
+                            waitForCommand=1
+                            #no_instruccion=i
+                            return None
+                    #EJECUTAR INSTRUCCION
+                    instr_temp=Inter.ejecutarInstruccionUnitaria(1,no_instruccion)
+                    if instr_temp is not None:
+                        if instr_temp==-10 : # EXIT
+                            no_instruccion=len(Inter.instrucciones)
+                        else: #GOTO
+                            no_instruccion=instr_temp
+                    waitForCommand=0
+                    no_instruccion+=1
+                else:
+                    messagebox.showinfo("Finalizado","Ultima instruccion ejecutada.")
 
     #METODO PARA LIMPIAR LAS TABLAS Y VARIABLES
     def reset(self):

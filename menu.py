@@ -109,30 +109,7 @@ def ejec_ascendente(contenido):
                 MessageBox.showinfo("Finalizado","Ultima instruccion ejecutada.")
         i=i+1
 
-def continuar_ejecucionAsc():
-    global no_instruccion, waitForCommand
 
-    while no_instruccion<len(Inter.instrucciones):
-        if waitForCommand == 0 or waitForCommand == 2: #0=Sin Entrada, 1=Esperando, 2=Comando Ingresado
-            if no_instruccion<len(Inter.instrucciones) :
-                is_asig=Inter.instrucciones[no_instruccion]
-                if isinstance(is_asig,Asignacion): 
-                    # COMANDO PARA LEER DE CONSOLA
-                    if isinstance(is_asig.valor,Read) and waitForCommand == 0:
-                        waitForCommand=1
-                        #no_instruccion=i
-                        return None
-                #EJECUTAR INSTRUCCION
-                instr_temp=Inter.ejecutarInstruccionUnitaria(1,no_instruccion)
-                if instr_temp is not None:
-                    if instr_temp==-10 : # EXIT
-                        no_instruccion=len(Inter.instrucciones)
-                    else: #GOTO
-                        no_instruccion=instr_temp
-                waitForCommand=0
-                no_instruccion+=1
-            else:
-                MessageBox.showinfo("Finalizado","Ultima instruccion ejecutada.")
 
 def iniciar_debug():
     global no_instruccion,ejecucion_automatica
@@ -169,14 +146,7 @@ def ejec_debug():
             MessageBox.showinfo("Finalizado","Ultima instruccion ejecutada.")
     
 
-def comando_ingresado(event):
-    #consola.insert("end","\n>>")
-    global waitForCommand
-    waitForCommand=2
-    if ejecucion_automatica == 1:
-        continuar_ejecucionAsc()
-    elif ejecucion_automatica == 2:
-        continuar_ejecucionDesc()
+
 
 def getSaltoLinea(cadena):
     cont=0
@@ -567,7 +537,7 @@ def getInput(event):
 #consola.config(width=95,height=11,padx=1, pady=3, font=consola_font, cursor="arrow",borderwidth=7,
 #                selectbackground="black",background="black", foreground="white")
 #consola.insert('end','>> Augus v1 - Compiladores 2 - USAC \n>>')
-#consola.bind("<Return>",comando_ingresado)
+
 #consola.config(insertbackground="white")
 
 #scroll2 = Scrollbar(leftBOTTOM, orient=VERTICAL)

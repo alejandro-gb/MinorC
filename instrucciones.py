@@ -23,7 +23,7 @@ class Declaracion(Instruccion):
         self.linea = linea
 
 #CLASE QUE MANEJA LAS ASIGNACIONES
-class Asignacion(Instruccion):
+class asignacion(Instruccion):
     #CONSTRUCTOR RECIBE EL ID Y EL VALOR
     def __init__(self, paravar, valor, signo ,linea, dimensiones = None):
         self.paravar = paravar
@@ -307,4 +307,8 @@ class fromStruct(Operacion):
     def __init__(self, ide, exp, linea):
         self.ide = ide
         self.exp = exp
+        self.linea = linea
+
+class Scanf(Operacion):
+    def __init__(self,linea):
         self.linea = linea
