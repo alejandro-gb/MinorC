@@ -1,0 +1,31 @@
+digraph AST {
+	start [label=start]
+	instrucciones [label=instrucciones]
+	start -> instrucciones
+	"1p" [label=Funcion]
+	instrucciones -> "1p"
+	"1ph1" [label=int]
+	"1ph2" [label=main]
+	"1ph3" [label=instrucciones]
+	"1p" -> "1ph1"
+	"1p" -> "1ph2"
+	"1p" -> "1ph3"
+	"2p" [label=Declaracion]
+	"1ph3" -> "2p"
+	"2ph1" [label=int]
+	"2ph2" [label=ListaNombres]
+	"2p" -> "2ph1"
+	"2p" -> "2ph2"
+	"3p" [label=Variable]
+	"2ph2" -> "3p"
+	"3ph1" [label=var]
+	"3p" -> "3ph1"
+	"4p" [label=Printf]
+	"1ph3" -> "4p"
+	"4ph1" [label=ListaValores]
+	"4p" -> "4ph1"
+	"5p" [label="%d"]
+	"4ph1" -> "5p"
+	"6p" [label=var]
+	"4ph1" -> "6p"
+}

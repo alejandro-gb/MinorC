@@ -227,6 +227,9 @@ class Editor:
     ts_debug=TS.TablaDeSimbolos()
     no_instruccion=0
     ejecucion_automatica=1
+    arbol = None
+    dot = None
+    i = 0
 
     #CONSTRUCTOR
     def __init__(self,principal):
@@ -330,12 +333,22 @@ class Editor:
         self.textarea.delete('1.0',gui.END)
         self.textarea.insert(gui.INSERT,cadena.replace(abuscar,aremplazar))
 
+    def inc(self):
+        self.i += 1
+        return self.i
+
     #METODO PARA HACER EL ANALISIS ASCENDENTE
     def AnalisisAsc(self):
         self.reset()
         self.consola.delete('1.0',gui.END)
         self.texto = str(self.textarea.cuadro.get('1.0',gui.END))
         self.instrucciones = analizar.parse(self.texto)
+        #---------------
+        self.dot = Digraph(name='AST',filename='AST',format='png')
+        self.dot.node('start','start')
+        self.dot.node('instrucciones','instrucciones')
+        self.dot.edge('start','instrucciones')
+        #---------------
         self.Interpretar(self.instrucciones, self.tablaGlobal)
         self.ReporteTablaSimbolos()
         self.ReporteErrores()
@@ -351,7 +364,7 @@ class Editor:
         if(len(self.tablaErrores.errores) != 0):
             self.VerReporteErrores()
 
-#-------------------------------------------------------INTERPRETE---------------------------------------
+    #-------------------------------------------------------INTERPRETE---------------------------------------
 
     #METODO PARA INTERPRETAR LAS INSTRUCCIONES
     def Interpretar(self, instrucciones, tabla):
@@ -361,26 +374,26 @@ class Editor:
             self.concatenar('main:')
             #BUSCAR INSTRUCCIONES GLOBALES
             for x in instrucciones:
-                if   isinstance(x, Declaracion) : self.InterpretarDeclaracion(x, tabla, 'global')
-                elif isinstance(x, Printf) : self.InterpretarPrintf(x, tabla)
-                elif isinstance(x, Arreglo) : self.InterpretarArreglo(x, tabla, 'global')
-                elif isinstance(x, asignacion) : self.InterpretarAsignacion(x, tabla)
-                elif isinstance(x, Etiqueta) : self.InterpretarEtiqueta(x, tabla, 'global')
-                elif isinstance(x, Goto) : self.InterpretarGoto(x, tabla, 'global')
-                elif isinstance(x, Struct) : self.InterpretarStruct(x, tabla, 'global')
+                if   isinstance(x, Declaracion) : self.InterpretarDeclaracion(x, tabla, 'global','instrucciones')
+                elif isinstance(x, Printf) : self.InterpretarPrintf(x, tabla,'instrucciones')
+                elif isinstance(x, Arreglo) : self.InterpretarArreglo(x, tabla, 'global','instrucciones')
+                elif isinstance(x, asignacion) : self.InterpretarAsignacion(x, tabla,'instrucciones')
+                elif isinstance(x, Etiqueta) : self.InterpretarEtiqueta(x, tabla, 'global','instrucciones')
+                elif isinstance(x, Goto) : self.InterpretarGoto(x, tabla, 'global','instrucciones')
+                elif isinstance(x, Struct) : self.InterpretarStruct(x, tabla, 'global','instrucciones')
             
             #BUSCAR EL MAIN
             for x in instrucciones:
                 if isinstance(x,Funcion):
                     if (x.nombre == 'main'):
-                        self.InterpretarMain(x, tabla)
+                        self.InterpretarMain(x, tabla,'instrucciones')
                         instrucciones.remove(x)
             
             #BUSCAR LAS DEMAS FUNCIONES
             for x in instrucciones:
                 if isinstance(x,Funcion) :  
                     self.concatenar('')
-                    self.InterpretarFuncion(x, tabla)
+                    self.InterpretarFuncion(x, tabla,'instrucciones')
             
             if self.returns:
                 self.concatenar('regresos:')
@@ -391,35 +404,48 @@ class Editor:
         #    messagebox.showerror('ERROR','NO SE INTERPRETO')
 
     #METODO PARA INTERPRETAR INSTRUCCIONES INTERNAS
-    def InterpretarIns(self, lista, tabla, nombre):
+    def InterpretarIns(self, lista, tabla, nombre, padre = None):
         for x in lista:
-            if   isinstance(x, Declaracion)  : self.InterpretarDeclaracion(x, tabla, nombre)
-            elif isinstance(x, Printf)       : self.InterpretarPrintf(x,tabla)
-            elif isinstance(x, Arreglo)      : self.InterpretarArreglo(x,tabla,nombre)
-            elif isinstance(x, asignacion)   : self.InterpretarAsignacion(x,tabla)
-            elif isinstance(x, While)        : self.InterpretarWhile(x,tabla,nombre)
-            elif isinstance(x, Dowhile)      : self.InterpretarDowhile(x,tabla,nombre)
-            elif isinstance(x, Etiqueta)     : self.InterpretarEtiqueta(x,tabla,nombre)
-            elif isinstance(x, Goto)         : self.InterpretarGoto(x,tabla,nombre)
-            elif isinstance(x, If)           : self.InterpretarIf(x,tabla,nombre)
-            elif isinstance(x, Switch)       : self.InterpretarSwitch(x,tabla,nombre)
-            elif isinstance(x, Return)       : self.InterpretarReturn(x,tabla)
-            elif isinstance(x, Break)        : self.InterpretarBreak(x,tabla)
-            elif isinstance(x, Continue)     : self.InterpretarContinue(x,tabla)
-            elif isinstance(x, Operacion)    : self.InterpretarOperacion(x,tabla)
-            elif isinstance(x, For)          : self.InterpretarFor(x,tabla,nombre)
-            elif isinstance(x, Struct)       : self.InterpretarStruct(x, tabla, nombre)
-            elif isinstance(x, NewStruct)    : self.InterpretarNewStruct(x, tabla, nombre)
-            elif isinstance(x, ToStruct)     : self.InterpretarToStruct(x, tabla, nombre)
+            if   isinstance(x, Declaracion)  : self.InterpretarDeclaracion(x, tabla, nombre, padre)
+            elif isinstance(x, Printf)       : self.InterpretarPrintf(x,tabla, padre)
+            elif isinstance(x, Arreglo)      : self.InterpretarArreglo(x,tabla,nombre, padre)
+            elif isinstance(x, asignacion)   : self.InterpretarAsignacion(x,tabla, padre)
+            elif isinstance(x, While)        : self.InterpretarWhile(x,tabla,nombre, padre)
+            elif isinstance(x, Dowhile)      : self.InterpretarDowhile(x,tabla,nombre, padre)
+            elif isinstance(x, Etiqueta)     : self.InterpretarEtiqueta(x,tabla,nombre, padre)
+            elif isinstance(x, Goto)         : self.InterpretarGoto(x,tabla,nombre, padre)
+            elif isinstance(x, If)           : self.InterpretarIf(x,tabla,nombre, padre)
+            elif isinstance(x, Switch)       : self.InterpretarSwitch(x,tabla,nombre, padre)
+            elif isinstance(x, Return)       : self.InterpretarReturn(x,tabla, padre)
+            elif isinstance(x, Break)        : self.InterpretarBreak(x,tabla, padre)
+            elif isinstance(x, Continue)     : self.InterpretarContinue(x,tabla, padre)
+            elif isinstance(x, Operacion)    : self.InterpretarOperacion(x,tabla, padre)
+            elif isinstance(x, For)          : self.InterpretarFor(x,tabla,nombre, padre)
+            elif isinstance(x, Struct)       : self.InterpretarStruct(x, tabla, nombre, padre)
+            elif isinstance(x, NewStruct)    : self.InterpretarNewStruct(x, tabla, nombre, padre)
+            elif isinstance(x, ToStruct)     : self.InterpretarToStruct(x, tabla, nombre, padre)
             elif isinstance(x, Funcion)      : self.errorSemantico('CORE_DUMPED',x.linea,'No se pueden hacer funciones anidadas')
             
     #METODO PARA INTERPRETAR UNA FUNCION
-    def InterpretarFuncion(self, funcion, tabla):
+    def InterpretarFuncion(self, funcion, tabla, padre = None):
         tipo    = funcion.tipo
         nombre  = funcion.nombre
         params  = funcion.listaparam
         ins     = funcion.lista
-
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'Funcion')
+        self.dot.edge(padre,tree)
+        self.dot.node(tree + 'h1',tipo)
+        self.dot.node(tree + 'h2',nombre)
+        self.dot.node(tree + 'h3','parametros')
+        self.dot.node(tree + 'h4','instrucciones')
+        self.dot.edge(tree,tree + 'h1')
+        self.dot.edge(tree,tree + 'h2')
+        self.dot.edge(tree,tree + 'h3')
+        self.dot.edge(tree,tree + 'h4')
+        #---------AST
         num = self.getId()
         simbolo = tablaSimbolos.Simbolo(num, nombre, '', tipo, 'Funcion', 'global')
         tabla.newSimbolo(simbolo)
@@ -428,6 +454,12 @@ class Editor:
         self.namerecursive = nombre
         nump = 0
         for param in params:
+            #-----------AST
+            numparam = str(self.inc())
+            nameparam = numparam + 'param'
+            self.dot.node(nameparam, param[1])
+            self.dot.edge(tree + 'h3', nameparam)
+            #-----------AST
             nums = self.getId()
             temporal = self.newTemp()
             val = '$a'+str(nump)
@@ -436,38 +468,74 @@ class Editor:
             self.concatenar(temporal + ' = ' + str(val) + ';')
             nump +=1;
         
-        self.InterpretarIns(ins,tabla,nombre)
+        self.InterpretarIns(ins, tabla, nombre, tree + 'h4')
         self.stack.pop()
         self.iscall = False
 
     #METODO PARA INTERPRETAR UNA FUNCION
-    def InterpretarMain(self, funcion, tabla):
+    def InterpretarMain(self, funcion, tabla, padre = None):
         ins = funcion.lista
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree, 'Funcion')
+        self.dot.edge(padre, tree)
+        self.dot.node(tree + 'h1', 'int')
+        self.dot.node(tree + 'h2', 'main')
+        self.dot.node(tree + 'h3', 'instrucciones')
+        self.dot.edge(tree, tree + 'h1')
+        self.dot.edge(tree, tree + 'h2')
+        self.dot.edge(tree, tree + 'h3')
+        #---------AST
         num = self.getId()
         simbolo = tablaSimbolos.Simbolo(num, 'main', '', 'int', 'Funcion', 'global')
         tabla.newSimbolo(simbolo)
         self.stack.append('main')
-        self.InterpretarIns(ins,tabla,'main')
+        self.InterpretarIns(ins,tabla,'main', tree + 'h3')
         self.concatenar('exit;')
         self.stack.pop()
         self.ismain = False
         self.iscall = False
 
     #METODO PARA INTERPRETAR UNA ETIQUETA
-    def InterpretarEtiqueta(self,ins,tabla,ambito):
+    def InterpretarEtiqueta(self,ins,tabla,ambito, padre = None):
         nomTag = ins.nombre
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree, 'Etiqueta')
+        self.dot.edge(padre, tree)
+        self.dot.node(tree + 'h1', nomTag)
+        self.dot.edge(tree, tree + 'h1')
+        #---------AST
         self.concatenar(nomTag + ':')
 
     #METODO PARA INTERPRETAR UN SALTO GOTO
-    def InterpretarGoto(self,ins,tabla,ambito):
+    def InterpretarGoto(self,ins,tabla,ambito, padre = None):
         nomTag = ins.nombre
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree, 'Goto')
+        self.dot.edge(padre, tree)
+        self.dot.node(tree + 'h1', nomTag)
+        self.dot.edge(tree, tree + 'h1')
+        #---------AST
         self.concatenar('goto '+nomTag + ';')
 
     #METODOD PARA INTERPRETAR UN RETURN
-    def InterpretarReturn(self, ret, tabla):
+    def InterpretarReturn(self, ret, tabla, padre = None):
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree, 'Return')
+        self.dot.edge(padre, tree)
+        self.dot.node(tree + 'h1', 'Expresion')
+        self.dot.edge(tree, tree + 'h1')
+        #---------AST
+        exp = self.InterpretarOperacion(ret.expresion,tabla,tree + 'h1')
         if(self.ismain == False):
             tempstack = self.returns.copy()
-            exp = self.InterpretarOperacion(ret.expresion,tabla)
             exptipo = exp[0]
             expval = str(exp[1])
             self.concatenar('$v0 = ' + expval +';') 
@@ -477,21 +545,48 @@ class Editor:
             self.concatenar('goto regresos;')
 
     #METODOD PARA INTERPRETAR UN RETURN
-    def InterpretarBreak(self,ret,tabla):
+    def InterpretarBreak(self,ret,tabla, padre = None):
         fin = self.stackLoop[-1]
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree, 'Break')
+        self.dot.edge(padre, tree)
+        #---------AST
         self.concatenar('goto ' + fin + ';')
 
     #METODOD PARA INTERPRETAR UN RETURN
-    def InterpretarContinue(self,ret,tabla):
+    def InterpretarContinue(self,ret,tabla, padre = None):
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree, 'Continue')
+        self.dot.edge(padre, tree)
+        #---------AST
         inicio = self.stackContinue[-1]
         self.concatenar('goto ' + inicio + ';')
 
     #METODO PARA INTERPRETAR UN FOR
-    def InterpretarFor(self, ciclo, tabla, ambito):
+    def InterpretarFor(self, ciclo, tabla, ambito, padre = None):
         inicio = ciclo.inicial
         condicion = ciclo.condicion
         cambio = ciclo.cambio
         lista = ciclo.ins
+
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'For')
+        self.dot.edge(padre,tree)
+        self.dot.node(tree + 'h1','Inicial')
+        self.dot.node(tree + 'h2','condicion')
+        self.dot.node(tree + 'h3','cambio')
+        self.dot.node(tree + 'h4','instrucciones')
+        self.dot.edge(tree,tree + 'h1')
+        self.dot.edge(tree,tree + 'h2')
+        self.dot.edge(tree,tree + 'h3')
+        self.dot.edge(tree,tree + 'h4')
+        #---------AST
 
         nombre = self.newTag('for') #ETIQUETA INICIO
         verdadero = nombre + 'V'    #ETIQUETA VERDADERA
@@ -503,19 +598,19 @@ class Editor:
         self.stackContinue.append(actualizar)
 
         if isinstance(inicio, Declaracion):
-            self.InterpretarDeclaracion(inicio,tabla,nombre)
+            self.InterpretarDeclaracion(inicio,tabla,nombre,tree + 'h1')
         elif isinstance(inicio, asignacion):
-            self.InterpretarAsignacion(inicio,tabla)
+            self.InterpretarAsignacion(inicio,tabla,tree + 'h1')
         self.concatenar(nombre + ':')
-        resultado = self.InterpretarOperacion(condicion,tabla)
+        resultado = self.InterpretarOperacion(condicion, tabla, tree + 'h2')
         cond = resultado[1]
         self.concatenar('if(' + cond + ')' + ' goto ' + verdadero + ';')
         self.concatenar('goto ' + falso + ';')
         self.concatenar(actualizar + ':')
-        self.InterpretarOperacion(cambio,tabla)
+        self.InterpretarOperacion(cambio, tabla, tree + 'h3')
         self.concatenar('goto '+ nombre +';')
         self.concatenar(verdadero +':')
-        self.InterpretarIns(lista, tabla, nombre)
+        self.InterpretarIns(lista, tabla, nombre, tree + 'h4')
         self.concatenar('goto '+ actualizar +';')        
         self.concatenar(falso +':')
         
@@ -524,10 +619,22 @@ class Editor:
         self.stackContinue.pop()
         
     #METODO PARA INTERPRETAR UN IF
-    def InterpretarIf(self, ciclo, tabla, ambito):
+    def InterpretarIf(self, ciclo, tabla, ambito, padre = None):
         condicion = ciclo.condicion
         listaif = ciclo.listaif
         listaelse = ciclo.listaelse
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'If')
+        self.dot.edge(padre,tree)
+        self.dot.node(tree + 'h1','condicion')
+        self.dot.node(tree + 'h2','listaif')
+        self.dot.node(tree + 'h3','listaelse')
+        self.dot.edge(tree,tree + 'h1')
+        self.dot.edge(tree,tree + 'h2')
+        self.dot.edge(tree,tree + 'h3')
+        #---------AST
         nombre = self.newTag('if')
         verdadero = nombre + 'V'
         falso = nombre + 'F'
@@ -536,36 +643,46 @@ class Editor:
 
         self.stack.append(nombre)
 
-        resultado = self.InterpretarOperacion(condicion,tabla)
+        resultado = self.InterpretarOperacion(condicion, tabla, tree + 'h1')
         cond = resultado[1]
         self.concatenar('if(' + cond + ') goto ' + verdadero + ';')
         self.concatenar('goto ' + falso + ';')
         self.concatenar(verdadero + ':')
-        self.InterpretarIns(listaif,tabla,nombre)
+        self.InterpretarIns(listaif, tabla, nombre, tree + 'h2')
         if(listaelse is not None):
             for x in listaelse:
                 if(type(x) is tuple):
                     condicionx = x[0]
                     listax = x[1]
+                    #-----------AST
+                    newifelse = str(self.inc())
+                    newname = newifelse + 'p'
+                    self.dot.node(newname, 'Else If')
+                    self.dot.edge(tree + 'h3', newname)
+                    #-----------AST
                     self.concatenar('goto ' + fin + ';')
                     nombrex = self.newTag('elseif')
                     verdaderox = nombrex + 'V'
                     falsox = nombrex + 'F'
                     self.concatenar(falso + ':')
                     falso = falsox
-                    resultadox = self.InterpretarOperacion(condicionx,tabla)
+                    resultadox = self.InterpretarOperacion(condicionx,tabla, newname)
                     condx = resultadox[1]
                     self.concatenar('if(' + condx + ') goto ' + verdaderox + ';')
                     self.concatenar('goto ' + falso + ';')
                     self.concatenar(verdaderox + ':')
-                    self.InterpretarIns(listax, tabla, nombre)
+                    self.InterpretarIns(listax, tabla, nombre, newname)
                     self.concatenar('goto ' + fin + ';')
                 else:
+                    #------------AST
+                    self.dot.node(tree + 'else', 'Else')
+                    self.dot.edge(tree + 'h3', tree + 'else')
+                    #------------AST
                     sielse = True
                     if(len(listaelse) == 1):
                         self.concatenar('goto ' + fin + ';')
                     self.concatenar(falso + ':')
-                    self.InterpretarIns(x,tabla,nombre)
+                    self.InterpretarIns(x,tabla,nombre,tree + 'else')
                     self.concatenar(fin + ':')
         
         if(sielse == False):
@@ -574,8 +691,18 @@ class Editor:
         self.stack.pop()
 
     #METODO PARA INTERPRETAR LOS SWITCHS
-    def InterpretarSwitch(self, ciclo, tabla, ambito):
-        exp = self.InterpretarOperacion(ciclo.expresion,tabla)
+    def InterpretarSwitch(self, ciclo, tabla, ambito, padre = None):
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'Switch')
+        self.dot.edge(padre,tree)
+        self.dot.node(tree + 'h1','Expresion')
+        self.dot.node(tree + 'h2','ListaCasos')
+        self.dot.edge(tree,tree + 'h1')
+        self.dot.edge(tree,tree + 'h2')
+        #---------AST
+        exp = self.InterpretarOperacion(ciclo.expresion,tabla,tree + 'h1')
         exptipo = exp[0]
         expval = exp[1]
         lista = ciclo.listacasos   
@@ -590,7 +717,13 @@ class Editor:
         for caso in lista:
             #CASO NORMAL
             if(type(caso) is tuple):
-                aevaluar =self.InterpretarOperacion(caso[0],tabla)
+                #---------AST
+                numast = str(self.inc())
+                nameast = numast + 'p'
+                self.dot.node(nameast,'Caso')
+                self.dot.edge(tree + 'h2',nameast)
+                #---------AST
+                aevaluar =self.InterpretarOperacion(caso[0],tabla,nameast)
                 restipo = aevaluar[0]
                 resvalor = aevaluar[1]
                 if self.VerificarTipo(exptipo,restipo):
@@ -604,17 +737,23 @@ class Editor:
                         self.concatenar(previa+':')
                     scontador += 1
                     self.concatenar('if(' + expval + ' != ' + resvalor + ') goto ' + namecase + ';')
-                    self.InterpretarIns(cuerpo,tabla,tag)
+                    self.InterpretarIns(cuerpo,tabla,tag,nameast)
                     #if conbreak:
                     #    self.concatenar('goto ' + fin + ';')
                 else:
                     self.errorSemantico('TYPE_ERROR',ciclo.linea,'El tipo a evaluar debe ser igual que evaluado')
             #DEFAULT
             else:
+                #---------AST
+                numdefast = str(self.inc())
+                namedefast = numdefast + 'p'
+                self.dot.node(namedefast,'Default')
+                self.dot.edge(tree + 'h2',namedefast)
+                #---------AST
                 haydef = True
                 tagdef = tag + str(scontador-1)
                 self.concatenar(tagdef + ':')
-                self.InterpretarIns(caso,tabla,tag)
+                self.InterpretarIns(caso,tabla,tag,namedefast)
         if not haydef:
             self.concatenar(tag+str(scontador-1)+':')
         self.concatenar(fin + ':')
@@ -623,10 +762,19 @@ class Editor:
         self.stackLoop.pop()
 
     #METODO PARA INTERPRETAR UN DOWHILE
-    def InterpretarDowhile(self,ciclo,tabla,ambito):
+    def InterpretarDowhile(self,ciclo,tabla,ambito, padre = None):
         condicion = ciclo.condicion
         ins = ciclo.lista
-        
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'Dowhile')
+        self.dot.edge(padre,tree)
+        self.dot.node(tree + 'h1','Condicion')
+        self.dot.node(tree + 'h2','Instrucciones')
+        self.dot.edge(tree,tree + 'h1')
+        self.dot.edge(tree,tree + 'h2')
+        #---------AST
         regreso = self.newTag('dowhile')
         falso = regreso + 'F'
         
@@ -635,8 +783,8 @@ class Editor:
         self.stackContinue.append(regreso)
 
         self.concatenar(regreso + ':')
-        self.InterpretarIns(ins,tabla,regreso)
-        resultado = self.InterpretarOperacion(condicion,tabla)
+        self.InterpretarIns(ins,tabla,regreso,tree + 'h2')
+        resultado = self.InterpretarOperacion(condicion, tabla, tree + 'h1')
         cond = resultado[1]
         self.concatenar('if(' + cond + ')' + ' goto ' + regreso + ';')
         self.concatenar(falso + ':')
@@ -646,10 +794,21 @@ class Editor:
         self.stackContinue.pop()
 
     #METODO PARA INTERPRETAR UN WHILE
-    def InterpretarWhile(self,ciclo,tabla,ambito):
+    def InterpretarWhile(self,ciclo,tabla,ambito, padre = None):
         condicion = ciclo.condicion
         ins = ciclo.lista
         
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'While')
+        self.dot.edge(padre,tree)
+        self.dot.node(tree + 'h1','Condicion')
+        self.dot.node(tree + 'h2','Instrucciones')
+        self.dot.edge(tree,tree + 'h1')
+        self.dot.edge(tree,tree + 'h2')
+        #---------AST
+
         regreso = self.newTag('while')  #ETIQUETA INICIO
         verdadero = regreso + 'V'       #ETIQUETA VERDADERA
         falso = regreso + 'F'           #ETIQUETA FALSA
@@ -659,12 +818,12 @@ class Editor:
         self.stackContinue.append(regreso)
 
         self.concatenar(regreso+':')
-        resultado = self.InterpretarOperacion(condicion,tabla)
+        resultado = self.InterpretarOperacion(condicion,tabla,tree + 'h1')
         cond = resultado[1]
         self.concatenar('if(' + cond + ')' + ' goto ' + verdadero + ';')
         self.concatenar('goto ' + falso + ';')
         self.concatenar(verdadero + ':')
-        self.InterpretarIns(ins,tabla,regreso)
+        self.InterpretarIns(ins,tabla,regreso,tree + 'h2')
         self.concatenar('goto ' + regreso + ';')
         self.concatenar(falso + ':')
         
@@ -673,9 +832,17 @@ class Editor:
         self.stackContinue.pop()
     
     #METODO PARA INTERPRETAR UN PRINTF
-    def InterpretarPrintf(self,ins,tabla):
+    def InterpretarPrintf(self,ins,tabla, padre = None):
         lista = ins.listavalores
-        forma = self.InterpretarOperacion(lista[0],tabla)
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'Printf')
+        self.dot.edge(padre,tree)
+        self.dot.node(tree + 'h1','ListaValores')
+        self.dot.edge(tree,tree + 'h1')
+        #---------AST
+        forma = self.InterpretarOperacion(lista[0],tabla,tree + 'h1')
         newtipo = forma[0]
         newval = forma[1]
         toconcat = ''
@@ -684,7 +851,7 @@ class Editor:
             return
         try:
             for i in range(1,len(lista)):
-                resultado = self.InterpretarOperacion(lista[i],tabla)
+                resultado = self.InterpretarOperacion(lista[i],tabla,tree + 'h1')
                 restipo = resultado[0]
                 resval = resultado[1]
                 tprint = 'print(' + str(resval) + ');'
@@ -725,9 +892,19 @@ class Editor:
             self.errorSemantico('NONETYPE_ERROR',ins.linea,'Se intenta imprimir un valor que no existe')
      
     #METODO PARA INTERPRETAR UNA DECLARACION
-    def InterpretarDeclaracion(self, ins, tabla, ambito):
+    def InterpretarDeclaracion(self, ins, tabla, ambito, padre = None):
         tipo = ins.tipo.lower()
         valor = ''
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'Declaracion')
+        self.dot.edge(padre,tree)
+        self.dot.node(tree + 'h1',tipo)
+        self.dot.node(tree + 'h2','ListaNombres')
+        self.dot.edge(tree,tree + 'h1')
+        self.dot.edge(tree,tree + 'h2')
+        #---------AST
         for nombre in ins.nombres:
             #try:
                 if((type(nombre) is str and self.VerificarAmbito(nombre, ambito ,tabla)) or (self.VerificarAmbito(nombre[0], ambito, tabla))):
@@ -740,13 +917,29 @@ class Editor:
                         elif(tipo == 'float'): valor = 0.0
                         elif(tipo == 'double'): valor = 0.0
                         else: valor = 'None'
+                        #---------AST
+                        numnew = str(self.inc())
+                        treenew = numnew + 'p'
+                        self.dot.node(treenew,'Variable')
+                        self.dot.edge(tree + 'h2',treenew)
+                        self.dot.node(treenew + 'h1',nombre)
+                        self.dot.edge(treenew, treenew + 'h1')
+                        #---------AST
                         simbolo = tablaSimbolos.Simbolo(num, nombre, temporal, tipo, valor, ambito)
                         tabla.newSimbolo(simbolo)
                         self.concatenar(temporal + ' = ' + str(valor) + ';')
                     #IDENTIFICADOR VALOR
                     elif(type(nombre) is tuple):
                         identificador = nombre[0]
-                        val = self.InterpretarOperacion(nombre[1], tabla, temporal)
+                        #---------AST
+                        numnew = str(self.inc())
+                        treenew = numnew + 'p'
+                        self.dot.node(treenew,'Variable')
+                        self.dot.edge(tree + 'h2',treenew)
+                        self.dot.node(treenew + 'h1',identificador)
+                        self.dot.edge(treenew, treenew + 'h1')
+                        #---------AST
+                        val = self.InterpretarOperacion(nombre[1], tabla, treenew, temporal)
                         newtipo = val[0]
                         valor = val[1]
                         if(self.VerificarTipo(newtipo, tipo)):#VERIFICAR TIPO
@@ -772,21 +965,49 @@ class Editor:
              #   self.errorSemantico('TYPE_ERROR',ins.linea,'No se pudo asignar el valor (type)')
 
     #METODO PARA INTERPRETAR UN STRUCT
-    def InterpretarStruct(self,ins,tabla,ambito):
+    def InterpretarStruct(self,ins,tabla,ambito, padre = None):
         idstruct = ins.id
         listains = ins.lista
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'Struct')
+        self.dot.edge(padre,tree)
+        self.dot.node(tree + 'h1',idstruct)
+        self.dot.node(tree + 'h2','Instrucciones')
+        self.dot.edge(tree,tree + 'h1')
+        self.dot.edge(tree,tree + 'h2')
+        #---------AST
         temporal = self.newTemp()
         num = self.getId()
         valor = []
         self.concatenar(temporal + ' = array();')
         for ins in listains:
+            #---------AST
+            numnew = str(self.inc())
+            treenew = numnodo + 'p'
+            self.dot.node(treenew,'Variable')
+            self.dot.edge(tree + 'h2',treenew)
+            #---------AST
             if isinstance(ins, Declaracion):
                 tipo = ins.tipo
                 for nombre in ins.nombres:
+                    #---------AST
+                    self.dot.node(nombre+numnew,nombre)
+                    self.dot.edge(treenew,nombre+numnew)
+                    self.dot.node(tipo+numnew,tipo)
+                    self.dot.edge(treenew,tipo+numnew)
+                    #---------AST
                     valor.append((tipo,nombre))
             elif isinstance(ins, Arreglo):
                 tipo = ins.tipo
                 nombre = ins.nombre
+                #--------AST
+                self.dot.node(nombre+numnew,nombre)
+                self.dot.edge(treenew,nombre+numnew)
+                self.dot.node(tipo+numnew,tipo)
+                self.dot.edge(treenew,tipo+numnew)
+                #--------AST
                 dimensiones = ins.dimensiones
                 valor.append((tipo,nombre,'array'))
             else:
@@ -795,8 +1016,18 @@ class Editor:
         tabla.newSimbolo(simbolo)
 
     #CLASE QUE MANEJA LA DECLARACION DE UN STRUCT
-    def InterpretarNewStruct(self, ins, tabla, ambito):
+    def InterpretarNewStruct(self, ins, tabla, ambito, padre = None):
         sim = self.BuscarSimbolo(ins.idstruct,tabla)
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'NewStruct')
+        self.dot.edge(padre,tree)
+        self.dot.node(tree + 'h1',ins.idstruct)
+        self.dot.node(tree + 'h2',ins.idvar)
+        self.dot.edge(tree,tree + 'h1')
+        self.dot.edge(tree,tree + 'h2')
+        #---------AST
         if sim is None:
             self.errorSemantico('VARIABLE_ERROR',ins.linea,'La variable no existe')
         else:
@@ -809,8 +1040,18 @@ class Editor:
                 self.errorSemantico('TYPE_ERROR',ins.linea,'La variable no es un struct')
 
     #CLASE QUE MANEJA LA ASIGNACION A UN STRUCT
-    def InterpretarToStruct(self,ins,tabla,ambito):
+    def InterpretarToStruct(self,ins,tabla,ambito, padre = None):
         sim = self.BuscarSimbolo(ins.id,tabla)
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'NewStruct')
+        self.dot.edge(padre,tree)
+        self.dot.node(tree + 'h1',ins.id)
+        self.dot.node(tree + 'h2','Asignacion')
+        self.dot.edge(tree,tree + 'h1')
+        self.dot.edge(tree,tree + 'h2')
+        #---------AST
         if sim is None:
             self.errorSemantico('VARIABLE_ERROR',ins.linea,'no es parte del struct')
         else:
@@ -818,7 +1059,7 @@ class Editor:
             temp = struct.temporal
             asig = ins.asigna
             parte = asig.paravar
-            valor = self.InterpretarOperacion(asig.valor,tabla)
+            valor = self.InterpretarOperacion(asig.valor, tabla, tree + 'h2')
             valtipo = valor[0]
             valval = valor[1]
             if(asig.dimensiones is None):
@@ -828,20 +1069,32 @@ class Editor:
             else:
                 toconcat = temp + "[" + str(sim.valor) + "]['" + parte + "']"
                 for dimension in asig.dimensiones:
-                    posicion = self.InterpretarOperacion(dimension,tabla)
+                    posicion = self.InterpretarOperacion(dimension,tabla,tree + 'h2')
                     val = posicion[1]
                     toconcat += '[' + str(val) + ']'
                 toconcat += ' = ' + str(valval) + ';'
                 self.concatenar(toconcat)
 
     #METODO PRA INTERPRETAR UNA ASIGNACION
-    def InterpretarAsignacion(self, ins, tabla):
+    def InterpretarAsignacion(self, ins, tabla, padre = None):
         paravar = ins.paravar
         simbolo = self.BuscarSimbolo(paravar, tabla)
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'Asignacion')
+        self.dot.edge(padre,tree)
+        self.dot.node(tree + 'h1',paravar)
+        self.dot.node(tree + 'h2',ins.signo)
+        self.dot.node(tree + 'h3','Valor')
+        self.dot.edge(tree, tree + 'h1')
+        self.dot.edge(tree, tree + 'h2')
+        self.dot.edge(tree, tree + 'h3')
+        #---------AST
         if(simbolo is not None):
             paratemp = simbolo.temporal
             signo = ins.signo
-            exp = self.InterpretarOperacion(ins.valor,tabla,paratemp)
+            exp = self.InterpretarOperacion(ins.valor, tabla, tree + 'h3', paratemp)
             newtipo = exp[0]
             newval = exp[1]
             if(self.VerificarTipo(newtipo,simbolo.tipo)):
@@ -875,12 +1128,14 @@ class Editor:
                             self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' ^ ' + str(newval) + ' ; ')
                 #ASIGNAR A ARREGLO
                 else:
+                    self.dot.node(tree + 'h4','ListaDimensiones')
+                    self.dot.edge(tree, tree + 'h4')
                     expre = simbolo.temporal
                     numdim = simbolo.dimension
                     valor = simbolo.valor
                     if(len(numdim) == len(ins.dimensiones)):
                         for x in range(0,len(ins.dimensiones)):
-                            posicion = self.InterpretarOperacion(ins.dimensiones[x],tabla)
+                            posicion = self.InterpretarOperacion(ins.dimensiones[x],tabla,tree + 'h4')
                             val = posicion[1]
                             expre += '[' + str(val) + ']'
                             try:
@@ -897,12 +1152,26 @@ class Editor:
             self.errorSemantico('NONE_ERROR',ins.linea,'La variable no ha sido declarada')
 
     #METODO PARA INTERPRETAR UN ARREGLO
-    def InterpretarArreglo(self, ins, tabla, ambito):
+    def InterpretarArreglo(self, ins, tabla, ambito, padre = None):
         tipo = ins.tipo
         nombre = ins.nombre
         dimensiones = ins.dimensiones
         listaval = ins.listavalores
         valor = []
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'Arreglo')
+        self.dot.edge(padre,tree)
+        self.dot.node(tree + 'h1',tipo)
+        self.dot.node(tree + 'h2',nombre)
+        self.dot.node(tree + 'h3','LISTADIMENSIONES')
+        self.dot.node(tree + 'h4','LISTAVALORES')
+        self.dot.edge(tree, tree + 'h1')
+        self.dot.edge(tree, tree + 'h2')
+        self.dot.edge(tree, tree + 'h3')
+        self.dot.edge(tree, tree + 'h4')
+        #---------AST
         if self.VerificarAmbito(nombre,ambito,tabla):
             ide = self.getId()
             temporal = self.newTemp()
@@ -913,7 +1182,7 @@ class Editor:
                 if(type(x) is str):
                     dims.append(100)
                 else:
-                    val = self.InterpretarOperacion(x, tabla)
+                    val = self.InterpretarOperacion(x, tabla,tree + 'h3')
                     newtipo = val[0]
                     newval = val[1]
                     dims.append(newval)
@@ -921,7 +1190,7 @@ class Editor:
             self.concatenar(temporal + '=' + 'array();')
             if(listaval is not None):
                 if(type(listaval) is not list):
-                    resultado = self.InterpretarOperacion(listaval,tabla)
+                    resultado = self.InterpretarOperacion(listaval,tabla,tree + 'h4')
                     valor = resultado[1]
                     tipo = 'char*'
                     simbolo = tablaSimbolos.Simbolo(ide, nombre, temporal, tipo, valor, ambito)
@@ -934,7 +1203,7 @@ class Editor:
                 else:
                     for x in range(0,len(listaval)):
                         for y in range(0,len(listaval[x])):
-                            resultado = self.InterpretarOperacion(listaval[x][y],tabla)
+                            resultado = self.InterpretarOperacion(listaval[x][y],tabla,tree + 'h4')
                             restipo = resultado[0]
                             resval = resultado[1]
                             if self.VerificarTipo(tipo, restipo):
@@ -1015,7 +1284,7 @@ class Editor:
             return None
 
     #METODO PARA INTERPRETAR UNA OPERACION 
-    def InterpretarOperacion(self, operacion, tabla, var = None):
+    def InterpretarOperacion(self, operacion, tabla, padre = None, var = None):
         if isinstance(operacion, OpNumero):
             tipo = ''
             valor = operacion.valor
@@ -1023,12 +1292,22 @@ class Editor:
                 tipo = 'int'
             elif(type(valor) is float):
                 tipo = 'float'
+            #---------AST
+            #numnodo = str(self.inc())
+            #tree = numnodo + 'p'
+            #self.dot.node(tree,str(valor))
+            #self.dot.edge(padre,tree)
+            #---------AST
             return (tipo,valor)
         elif isinstance(operacion, OpNormal):
-            op1 = self.InterpretarOperacion(operacion.op1,tabla)
-            op2 = self.InterpretarOperacion(operacion.op2,tabla)
-            signo = operacion.signo
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
             
+            op1 = self.InterpretarOperacion(operacion.op1,tabla,tree + '1')
+            op2 = self.InterpretarOperacion(operacion.op2,tabla,tree + '3')
+            signo = operacion.signo
+
             if(op1 != None and op2 != None):
                 tipo1 = op1[0]
                 val1 = op1[1]
@@ -1037,8 +1316,16 @@ class Editor:
                 valor1 = str(val1)
                 valor2 = str(val2)
 
+                self.dot.node(tree + '1',valor1)
+                self.dot.node(tree + '3',valor2)
+                self.dot.edge(padre,tree + '1')
+                self.dot.edge(padre,tree + '2')
+                self.dot.edge(padre,tree + '3')
+                #---------AST
+
                 #ARITMETICAS
                 if signo == Aritmetica.SUMA:
+                    self.dot.node(tree + '2','+')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1052,6 +1339,7 @@ class Editor:
                         nval = valor1 + ' + ' + valor2
                         return (restipo , nval)       
                 elif signo == Aritmetica.RESTA:
+                    self.dot.node(tree + '2','-')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1065,6 +1353,7 @@ class Editor:
                         nval = valor1 + ' - ' + valor2
                         return (restipo , nval)
                 elif signo == Aritmetica.MULTI:
+                    self.dot.node(tree + '2','*')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1078,6 +1367,7 @@ class Editor:
                         nval = valor1 + ' * ' + valor2
                         return (restipo , nval)
                 elif signo == Aritmetica.DIV:
+                    self.dot.node(tree + '2','/')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1091,6 +1381,7 @@ class Editor:
                         nval = valor1 + ' / ' + valor2
                         return (restipo , nval)
                 elif signo == Aritmetica.MODULO:
+                    self.dot.node(tree + '2','%')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1106,6 +1397,7 @@ class Editor:
                     
                 #RELACIONALES
                 elif signo == Relacional.MAYOR:
+                    self.dot.node(tree + '2','>')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1119,6 +1411,7 @@ class Editor:
                         nval = valor1 + ' > ' + valor2
                         return (restipo , nval)
                 elif signo == Relacional.MENOR:
+                    self.dot.node(tree + '2','<')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1132,6 +1425,7 @@ class Editor:
                         nval = valor1 + ' < ' + valor2
                         return (restipo , nval)
                 elif signo == Relacional.MAYORIGUAL:
+                    self.dot.node(tree + '2','>=')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1145,6 +1439,7 @@ class Editor:
                         nval = valor1 + ' >= ' + valor2
                         return (restipo , nval)
                 elif signo == Relacional.MENORIGUAL:
+                    self.dot.node(tree + '2','<=')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1158,6 +1453,7 @@ class Editor:
                         nval = valor1 + ' <= ' + valor2
                         return (restipo , nval)
                 elif signo == Relacional.EQUIVALENTE:
+                    self.dot.node(tree + '2','==')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1171,6 +1467,7 @@ class Editor:
                         nval = valor1 + ' == ' + valor2
                         return (restipo , nval)
                 elif signo == Relacional.DIFERENTE:
+                    self.dot.node(tree + '2','!=')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1186,6 +1483,7 @@ class Editor:
                     
                 #LOGICOS
                 elif signo == Logica.AND:
+                    self.dot.node(tree + '2','&&')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1199,6 +1497,7 @@ class Editor:
                         nval = valor1 + ' && ' + valor2
                         return (restipo , nval)
                 elif signo == Logica.OR:
+                    self.dot.node(tree + '2','||')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1214,6 +1513,7 @@ class Editor:
 
                 #BITS
                 elif signo == Bits.BITAND:
+                    self.dot.node(tree + '2','&')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1227,6 +1527,7 @@ class Editor:
                         nval = valor1 + ' & ' + valor2
                         return (restipo , nval)
                 elif signo == Bits.BITOR:
+                    self.dot.node(tree + '2','|')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1240,6 +1541,7 @@ class Editor:
                         nval = valor1 + ' | ' + valor2
                         return (restipo , nval)
                 elif signo == Bits.BITXOR:
+                    self.dot.node(tree + '2','^')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1253,6 +1555,7 @@ class Editor:
                         nval = valor1 + ' ^ ' + valor2
                         return (restipo , nval)
                 elif signo == Bits.BITSHL:
+                    self.dot.node(tree + '2','<<')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1266,6 +1569,7 @@ class Editor:
                         nval = valor1 + ' << ' + valor2
                         return (restipo , nval)
                 elif signo == Bits.BITSHR:
+                    self.dot.node(tree + '2','>>')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
@@ -1293,6 +1597,12 @@ class Editor:
                 cadena = cadena.replace("\\'","'")
             if("\\\\" in cadena):
                 cadena = cadena.replace("\\\\","\\")
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+            self.dot.node(tree,str(cadena))
+            self.dot.edge(padre,tree)
+            #---------AST
             return ('char',cadena)
         elif isinstance(operacion, OpId):
             variable = self.BuscarSimbolo(operacion.id,tabla)
@@ -1302,6 +1612,12 @@ class Editor:
             else:
                 tipo = variable.tipo
                 temporal = variable.temporal
+                #---------AST
+                numnodo = str(self.inc())
+                tree = numnodo + 'p'
+                self.dot.node(tree,operacion.id)
+                self.dot.edge(padre,tree)
+                #---------AST
                 return(tipo,temporal)
         elif isinstance(operacion, Acceso):
             variable = self.BuscarSimbolo(operacion.id,tabla)
@@ -1325,27 +1641,60 @@ class Editor:
                     self.errorSemantico('TYPE_VARIABLE',operacion.linea,'La variable no es arreglo')
                     return None
         elif isinstance(operacion, OpMenos):
-            exp = self.InterpretarOperacion(operacion.exp,tabla)
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+            
+            exp = self.InterpretarOperacion(operacion.exp,tabla,tree + '2')
             newtipo = exp[0]
             newval ='-' + str(exp[1])
+
+            self.dot.node(tree + '1','-')
+            self.dot.node(tree + '2',str(exp[1]))
+            self.dot.edge(padre,tree + '1')
+            self.dot.edge(padre,tree + '2')
+            #---------AST
             return(newtipo,newval)
         elif isinstance(operacion, OpNotbit):
-            exp = self.InterpretarOperacion(operacion.exp,tabla)
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+            
+            exp = self.InterpretarOperacion(operacion.exp, tabla, tree + '2')
             newtipo = exp[0]
             newval = '~'+str(exp[1])
+            
+            self.dot.node(tree + '1','~')
+            self.dot.node(tree + '2',str(exp[1]))
+            self.dot.edge(padre,tree + '1')
+            self.dot.edge(padre,tree + '2')
+            #---------AST
             return(newtipo,newval)
         elif isinstance(operacion, OpNotlog):
-            exp = self.InterpretarOperacion(operacion.exp,tabla)
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+
+            exp = self.InterpretarOperacion(operacion.exp, tabla, tree + '2')
             newtipo = exp[0]
             newval = '!'+str(exp[1])
+            
+            self.dot.node(tree + '1','!')
+            self.dot.node(tree + '2',str(exp[1]))
+            self.dot.edge(padre,tree + '1')
+            self.dot.edge(padre,tree + '2')
+            #---------AST
             return(newtipo,newval)
         elif isinstance(operacion, OpTam):
             restipo = ''
             resval = ''
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
             if (type(operacion.exp) is str):
                 restipo = operacion.exp
             else:
-                res = self.InterpretarOperacion(operacion.exp,tabla)
+                res = self.InterpretarOperacion(operacion.exp, tabla, tree + '2')
                 restipo = res[0]
                 resval = res[1]
             if(restipo == 'int'):
@@ -1359,10 +1708,18 @@ class Editor:
             else:
                 self.errorSemantico('TYPE_ERROR',operacion.linea,'Sizeof de tipos basicos')
                 resval = 0
-
+            self.dot.node(tree + '1','Sizeof')
+            self.dot.node(tree + '2',str(resval))
+            self.dot.edge(padre,tree + '1')
+            self.dot.edge(padre,tree + '2')
+            #---------AST
             return('int',resval)
         elif isinstance(operacion, OpInc):
-            exp = self.InterpretarOperacion(operacion.exp,tabla)
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+            
+            exp = self.InterpretarOperacion(operacion.exp, tabla, tree + '2')
             newtipo = exp[0]
             newval = str(exp[1])
             asignar = newval + ' = ' + newval + ' + 1;'
@@ -1370,9 +1727,19 @@ class Editor:
             if var is not None:    
                 newasig = var + ' = ' + newval + ';'
                 self.concatenar(newasig)
+
+            self.dot.node(tree + '1','++')
+            self.dot.node(tree + '2',newval)
+            self.dot.edge(padre,tree + '1')
+            self.dot.edge(padre,tree + '2')
+            #---------AST            
             return(newtipo , True)
         elif isinstance(operacion, OpDec):
-            exp = self.InterpretarOperacion(operacion.exp,tabla)
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+
+            exp = self.InterpretarOperacion(operacion.exp,tabla, tree + '2')
             newtipo = exp[0]
             newval = str(exp[1])
             asignar = newval + ' = ' + newval + ' - 1;'
@@ -1380,9 +1747,19 @@ class Editor:
             if var is not None:    
                 newasig = var + ' = ' + newval + ';'
                 self.concatenar(newasig)
+            
+            self.dot.node(tree + '1','--')
+            self.dot.node(tree + '2',newval)
+            self.dot.edge(padre,tree + '1')
+            self.dot.edge(padre,tree + '2')
+            #---------AST
             return(newtipo , True)
         elif isinstance(operacion, OpPostInc):
-            exp = self.InterpretarOperacion(operacion.exp,tabla)
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+
+            exp = self.InterpretarOperacion(operacion.exp, tabla, tree + '1')
             newtipo = exp[0]
             newval = str(exp[1])
             if var is not None:
@@ -1390,9 +1767,19 @@ class Editor:
                 self.concatenar(asignar)
             newasig = newval + ' = ' + newval + ' + 1;'
             self.concatenar(newasig)
+            
+            self.dot.node(tree + '1',newval)
+            self.dot.node(tree + '2','++')
+            self.dot.edge(padre,tree + '1')
+            self.dot.edge(padre,tree + '2')
+            #---------AST
             return(newtipo , True)
         elif isinstance(operacion, OpPostDec):
-            exp = self.InterpretarOperacion(operacion.exp,tabla)
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+
+            exp = self.InterpretarOperacion(operacion.exp, tabla, tree + '1')
             newtipo = exp[0]
             newval = str(exp[1])
             if var is not None:
@@ -1400,14 +1787,33 @@ class Editor:
                 self.concatenar(asignar)
             newasig = newval + ' = ' + newval + ' - 1;'
             self.concatenar(newasig)
+
+            self.dot.node(tree + '1',newval)
+            self.dot.node(tree + '2','--')
+            self.dot.edge(padre,tree + '1')
+            self.dot.edge(padre,tree + '2')
+            #---------AST
             return(newtipo, True)
         elif isinstance(operacion, Ternario):
-            condicion =self.InterpretarOperacion(operacion.condicion,tabla)
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+            self.dot.node(tree,'Ternario')
+            self.dot.edge(padre, tree)
+            self.dot.node(tree + '1','condicion')
+            self.dot.node(tree + '2','verdadero')
+            self.dot.node(tree + '3','falso')
+            self.dot.edge(tree, tree + '1')
+            self.dot.edge(tree, tree + '2')
+            self.dot.edge(tree, tree + '3')
+            #---------AST
+
+            condicion =self.InterpretarOperacion(operacion.condicion, tabla, tree + '1')
             condval = condicion[1]
-            estrue =self.InterpretarOperacion(operacion.verdadero,tabla)
+            estrue =self.InterpretarOperacion(operacion.verdadero, tabla, tree + '2')
             truetipo = estrue[0]
             trueval = estrue[1]
-            esfalse = self.InterpretarOperacion(operacion.falso,tabla)
+            esfalse = self.InterpretarOperacion(operacion.falso, tabla, tree + '3')
             falsetipo = esfalse[0]
             falseval = esfalse[1]
             tag = self.newTag('ternario')
@@ -1425,27 +1831,48 @@ class Editor:
             return(truetipo,True)
         elif isinstance(operacion, Casteo):
             tipo = operacion.tipo
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+            self.dot.node(tree,'Ternario')
+            self.dot.edge(padre, tree)
+            self.dot.node(tree + '1',tipo)
+            self.dot.node(tree + '2','expresion')
+            self.dot.edge(tree, tree + '1')
+            self.dot.edge(tree, tree + '2')
+            #---------AST
             if(tipo == 'double'):
                 tipo = 'float'
-            exp = self.InterpretarOperacion(operacion.expresion,tabla)
+            exp = self.InterpretarOperacion(operacion.expresion, tabla, tree + '2')
             exptipo = exp[0]
             expval = exp[1]
             self.concatenar(expval + ' = (' + tipo + ')' + expval + ';')
             return(tipo,expval)
         elif isinstance(operacion, Llamada):
+            id = operacion.id
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+            self.dot.node(tree,'Llamada')
+            self.dot.edge(padre, tree)
+            self.dot.node(tree + '1', id)
+            self.dot.node(tree + '2','ListaParamtros')
+            self.dot.edge(tree, tree + '1')
+            self.dot.edge(tree, tree + '2')
+            #---------AST
 
             self.iscall = True
             self.numfunc += 1
             self.returns.append(self.numfunc)
             self.concatenar('$ra = '+str(self.numfunc)+';')
-            id = operacion.id
+            
             if(self.namerecursive == id):
                 self.isrecursive = True
                 self.iscall = False
             valores = operacion.lista
             contparam = 0
             for valor in valores:
-                parametro = self.InterpretarOperacion(valor, tabla)
+                parametro = self.InterpretarOperacion(valor, tabla, tree + '2')
                 tipo = parametro[0]
                 val = str(parametro[1])
                 par = '$a'+str(contparam)
@@ -1460,13 +1887,35 @@ class Editor:
       
             return('int','$v0')
         elif isinstance(operacion, Referencia):
-            resultado = self.InterpretarOperacion(operacion.exp,tabla)
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+            self.dot.node(tree,'Referencia')
+            self.dot.edge(padre, tree)
+            #---------AST
+            resultado = self.InterpretarOperacion(operacion.exp, tabla, tree + '1')
             restipo = resultado[0]
             resval = resultado[1]
             tostr = '&'+str(resval)
+
+            self.dot.node(tree + '1', tostr)
+            self.dot.edge(tree, tree + '1')
+
             return(restipo,tostr)
         elif isinstance(operacion, fromStruct):
             objeto = self.BuscarSimbolo(operacion.ide,tabla)
+                                    
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+            self.dot.node(tree,'fromStruct')
+            self.dot.edge(padre, tree)
+            self.dot.node(tree + '1', operacion.ide)
+            self.dot.node(tree + '2','Expresion')
+            self.dot.edge(tree, tree + '1')
+            self.dot.edge(tree, tree + '2')
+            #---------AST
+
             if objeto is not None:
                 objetoname = objeto.nombre
                 objetonum = objeto.valor
@@ -1480,7 +1929,7 @@ class Editor:
                         name = operacion.exp.id
                         toreturn += "['" + name + "']"
                         for x in operacion.exp.lista:
-                            posicion = self.InterpretarOperacion(x,tabla)
+                            posicion = self.InterpretarOperacion(x, tabla, tree + '2')
                             postipo = posicion[0]
                             toreturn += '[' + str(posicion[1]) + ']' 
                     elif isinstance(operacion.exp, OpId):
@@ -1494,6 +1943,12 @@ class Editor:
             else:
                 self.errorSemantico('UNDEFINED_VARIABLE', operacion.linea, 'La variable no existe')
         elif isinstance(operacion, Scanf):
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+            self.dot.node(tree,'Scanf')
+            self.dot.edge(padre,tree)
+            #---------AST
             return('void','read()')
         else:
             self.errorSemantico('OPERATION_ERROR',operacion.linea,'No se pudo hacer ninguna operacion')
@@ -1520,7 +1975,7 @@ class Editor:
         self.numtag += 1
         return new 
 
-#-------------------------------------------------------------------------------------------------
+    #-------------------------------------------------------------------------------------------------
 
     #METODO PARA AVANZAR EN EL DEBUG
     def SiguientePaso(self):
@@ -1730,7 +2185,7 @@ class Editor:
 
     #METODO PARA VER EL AST
     def VerAST(self):
-        pass
+        self.dot.render('Ast',view=True)
 
     #METODO PARA ASIGNAR UN NUEVO ID A CADA SIMBOLO
     def getId(self):
@@ -1816,13 +2271,15 @@ class Editor:
         self.returns.clear()
         self.ismain = True
         self.iscall = False
+        self.arbol = None
+        self.i = 0
+        self.dot = None
         try:
             f = open('ReporteGr.html', "w")
             f.write('')
             f.close()
         except:
             messagebox.showinfo("Error","No se pudo abrir el archivo del reporte gramatical")
-
 
 #--------------------------------------LOOP PARA MANTENAR LA EJECUCION DEL PROGRAMA
 if __name__ == "__main__":
