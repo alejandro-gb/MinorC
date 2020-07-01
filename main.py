@@ -17,6 +17,7 @@ import ts as TS
 from instruccionesAugus import *
 import interprete as Inter
 import gramatical
+import optimizacion
 from instrucciones import *
 
 
@@ -58,11 +59,12 @@ class BarraDeMenu:
         editar.add_command(label="Reemplazar", command = parent.Reemplazar)
 
         #lista de opciones de ejecutar
-        ejecutar.add_command(label="Interpretar", command=parent.AnalisisAsc)
+        ejecutar.add_command(label="Ejecutar", command=parent.AnalisisAsc)
         ejecutar.add_separator()
         ejecutar.add_command(label="Reporte de Errores", command=parent.VerReporteErrores)
         ejecutar.add_command(label="Tabla de simbolos", command=parent.VerTablaSimbolos)
         ejecutar.add_command(label="Reporte del AST", command=parent.VerAST)
+        ejecutar.add_command(label="Reporte de Optimizacion", command=parent.VerOptimizacion)
         ejecutar.add_command(label="Reporte gramatical", command=parent.RepGramatical)
 
         #lista de opciones de opciones
@@ -71,7 +73,7 @@ class BarraDeMenu:
 
         #lista de opciones de debugin
         debugin.add_command(label="Run debug", command= parent.SiguientePaso)
-        debugin.add_command(label="Next step", command= lambda: parent.test.set(1))
+        #debugin.add_command(label="Next step", command= lambda: parent.test.set(1))
         debugin.add_command(label="Stop", command= parent.stop)
         #lista de opciones de ayuda
         ayuda.add_command(label="Ayuda", command=self.verAyuda)
@@ -100,7 +102,7 @@ class EditorAvanzado(gui.Frame):
     # constructor
     def __init__(self, master, *args, **kwargs):
         gui.Frame.__init__(self, *args, **kwargs)
-        fuente = ("Arial",14)
+        fuente = ("Arial",11)
         self.cuadro = gui.Text(self, selectbackground="light grey", width=120, height=20, font=fuente)
         self.scrollbar = gui.Scrollbar(self, orient=gui.VERTICAL, command=self.cuadro.yview)
         self.cuadro.configure(yscrollcommand=self.scrollbar.set)
@@ -209,6 +211,7 @@ class Editor:
     tablaGlobal = tablaSimbolos.TablaSimbolos()
     tablaErrores = errores.TablaErrores()
     tablagramatical = gramatical.TablaGramatical()
+    tablaoptimizacion = optimizacion.TablaOptimizacion()
     temp = 0
     param = 0
     numtag = 0
@@ -235,7 +238,7 @@ class Editor:
     def __init__(self,principal):
         principal.title("Sin titulo - MinorC")
         principal.geometry("600x500")
-        fuente = ("Arial",13)
+        fuente = ("Arial",12)
         self.principal = principal
         self.nombre = None
         self.tema = 1
@@ -352,6 +355,8 @@ class Editor:
         self.Interpretar(self.instrucciones, self.tablaGlobal)
         self.ReporteTablaSimbolos()
         self.ReporteErrores()
+        self.ReporteOptimizacion()
+        print(self.resultado)
         try:
             f = open("CodigoAugus.txt","w")
             f.write(self.resultado)
@@ -364,7 +369,7 @@ class Editor:
         if(len(self.tablaErrores.errores) != 0):
             self.VerReporteErrores()
 
-    #-------------------------------------------------------INTERPRETE---------------------------------------
+#-------------------------------------------------------INTERPRETE---------------------------------------
 
     #METODO PARA INTERPRETAR LAS INSTRUCCIONES
     def Interpretar(self, instrucciones, tabla):
@@ -372,6 +377,9 @@ class Editor:
 
             self.stack.append('global')
             self.concatenar('main:')
+            self.concatenar('$s0 = array();')
+            self.concatenar('$sp = -1;')
+            self.concatenar('$ra = -1;')
             #BUSCAR INSTRUCCIONES GLOBALES
             for x in instrucciones:
                 if   isinstance(x, Declaracion) : self.InterpretarDeclaracion(x, tabla, 'global','instrucciones')
@@ -396,10 +404,17 @@ class Editor:
                     self.InterpretarFuncion(x, tabla,'instrucciones')
             
             if self.returns:
+                self.concatenar('\n')
                 self.concatenar('regresos:')
-                for r in self.returns:
-                    self.concatenar('if($ra == '+str(r)+') goto ra'+str(r)+';')
-                
+                for r in reversed(range(0,len(self.returns))):
+                    self.concatenar('if($s0[$ra] == '+str(self.returns[r]) + ') goto pop;')
+
+                self.concatenar('pop:')
+                self.concatenar('$s1 = $s0[$ra];')
+                self.concatenar('$ra = $ra - 1;')
+                for r in reversed(range(0,len(self.returns))):
+                    self.concatenar('if($s1 == '+str(self.returns[r]) + ') goto ra'+str(self.returns[r])+';')
+                                
         #except:
         #    messagebox.showerror('ERROR','NO SE INTERPRETO')
 
@@ -424,7 +439,9 @@ class Editor:
             elif isinstance(x, Struct)       : self.InterpretarStruct(x, tabla, nombre, padre)
             elif isinstance(x, NewStruct)    : self.InterpretarNewStruct(x, tabla, nombre, padre)
             elif isinstance(x, ToStruct)     : self.InterpretarToStruct(x, tabla, nombre, padre)
+            elif isinstance(x, Call)         : self.InterpretarCall(x, tabla, padre)
             elif isinstance(x, Funcion)      : self.errorSemantico('CORE_DUMPED',x.linea,'No se pueden hacer funciones anidadas')
+            else: print("None")
             
     #METODO PARA INTERPRETAR UNA FUNCION
     def InterpretarFuncion(self, funcion, tabla, padre = None):
@@ -432,6 +449,7 @@ class Editor:
         nombre  = funcion.nombre
         params  = funcion.listaparam
         ins     = funcion.lista
+        
         #---------AST
         numnodo = str(self.inc())
         tree = numnodo + 'p'
@@ -446,6 +464,7 @@ class Editor:
         self.dot.edge(tree,tree + 'h3')
         self.dot.edge(tree,tree + 'h4')
         #---------AST
+        
         num = self.getId()
         simbolo = tablaSimbolos.Simbolo(num, nombre, '', tipo, 'Funcion', 'global')
         tabla.newSimbolo(simbolo)
@@ -453,28 +472,68 @@ class Editor:
         self.concatenar(nombre + ':')
         self.namerecursive = nombre
         nump = 0
-        for param in params:
-            #-----------AST
-            numparam = str(self.inc())
-            nameparam = numparam + 'param'
-            self.dot.node(nameparam, param[1])
-            self.dot.edge(tree + 'h3', nameparam)
-            #-----------AST
-            nums = self.getId()
-            temporal = self.newTemp()
-            val = '$a'+str(nump)
-            simbolo = tablaSimbolos.Simbolo(nums, param[1], temporal, param[0], val, nombre)
-            tabla.newSimbolo(simbolo)
-            self.concatenar(temporal + ' = ' + str(val) + ';')
-            nump +=1;
+        if params:
+            for param in params:
+                #-----------AST
+                numparam = str(self.inc())
+                nameparam = numparam + 'param'
+                self.dot.node(nameparam, param[1])
+                self.dot.edge(tree + 'h3', nameparam)
+                #-----------AST
+                nums = self.getId()
+                temporal = self.newTemp()
+                val = '$a'+str(nump)
+                simbolo = tablaSimbolos.Simbolo(nums, param[1], temporal, param[0], val, nombre)
+                tabla.newSimbolo(simbolo)
+                self.concatenar(temporal + ' = ' + str(val) + ';')
+                nump +=1;
         
         self.InterpretarIns(ins, tabla, nombre, tree + 'h4')
+        #if self.iscall:
+        #    self.concatenar('$ra = $ra - 1;')
+        self.concatenar('goto regresos;')
         self.stack.pop()
         self.iscall = False
+
+    def InterpretarCall(self, llamada, tabla, padre):
+        nombre = llamada.id
+        params = llamada.listaparam
+        funcion = self.BuscarSimbolo(nombre,tabla)
+
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'Llamada')
+        self.dot.edge(padre, tree)
+        self.dot.node(tree + '1', nombre)
+        self.dot.node(tree + '2','ListaParamtros')
+        self.dot.edge(tree, tree + '1')
+        self.dot.edge(tree, tree + '2')
+        #---------AST
+
+        self.returns.append(self.numfunc)
+        self.concatenar('$ra = $ra + 1;')
+        self.concatenar('$s0[$ra] = '+str(self.numfunc)+';')
+        #TIENE PARAMETROS
+        if(type(params) is list):
+            contparam = 0
+            for param in params:
+                parametro = self.InterpretarOperacion(param, tabla, tree + '2')
+                tipo = parametro[0]
+                val = str(parametro[1])
+                par = '$a'+str(contparam)
+                self.concatenar(par + ' = ' + val + ';')
+                contparam += 1
+                    
+        self.concatenar('goto ' + nombre +';')
+        self.concatenar('ra' + str(self.numfunc) + ':')
+        self.numfunc += 1
+            
 
     #METODO PARA INTERPRETAR UNA FUNCION
     def InterpretarMain(self, funcion, tabla, padre = None):
         ins = funcion.lista
+        
         #---------AST
         numnodo = str(self.inc())
         tree = numnodo + 'p'
@@ -487,6 +546,7 @@ class Editor:
         self.dot.edge(tree, tree + 'h2')
         self.dot.edge(tree, tree + 'h3')
         #---------AST
+        
         num = self.getId()
         simbolo = tablaSimbolos.Simbolo(num, 'main', '', 'int', 'Funcion', 'global')
         tabla.newSimbolo(simbolo)
@@ -525,24 +585,25 @@ class Editor:
 
     #METODOD PARA INTERPRETAR UN RETURN
     def InterpretarReturn(self, ret, tabla, padre = None):
-        #---------AST
-        numnodo = str(self.inc())
-        tree = numnodo + 'p'
-        self.dot.node(tree, 'Return')
-        self.dot.edge(padre, tree)
-        self.dot.node(tree + 'h1', 'Expresion')
-        self.dot.edge(tree, tree + 'h1')
-        #---------AST
-        exp = self.InterpretarOperacion(ret.expresion,tabla,tree + 'h1')
-        if(self.ismain == False):
-            tempstack = self.returns.copy()
-            exptipo = exp[0]
-            expval = str(exp[1])
-            self.concatenar('$v0 = ' + expval +';') 
-            if self.iscall:
-                self.concatenar('$ra = $ra - 1;')
-            self.iscall = False
-            self.concatenar('goto regresos;')
+        if ret.expresion is not None:
+            #---------AST
+            numnodo = str(self.inc())
+            tree = numnodo + 'p'
+            self.dot.node(tree, 'Return')
+            self.dot.edge(padre, tree)
+            self.dot.node(tree + 'h1', 'Expresion')
+            self.dot.edge(tree, tree + 'h1')
+            #---------AST
+            exp = self.InterpretarOperacion(ret.expresion,tabla,tree + 'h1')
+            if(self.ismain == False):
+                tempstack = self.returns.copy()
+                exptipo = exp[0]
+                expval = str(exp[1])
+                self.concatenar('$v0 = ' + expval +';') 
+                if self.iscall:
+                    self.concatenar('$ra = $ra - 1;')
+                self.iscall = False
+                self.concatenar('goto regresos;')
 
     #METODOD PARA INTERPRETAR UN RETURN
     def InterpretarBreak(self,ret,tabla, padre = None):
@@ -620,74 +681,71 @@ class Editor:
         
     #METODO PARA INTERPRETAR UN IF
     def InterpretarIf(self, ciclo, tabla, ambito, padre = None):
-        condicion = ciclo.condicion
-        listaif = ciclo.listaif
-        listaelse = ciclo.listaelse
-        #---------AST
+        condicion   = ciclo.condicion
+        insif       = ciclo.listaif
+        listaelse  = ciclo.listaelse
+        
+        #--------------------------------------------AST
         numnodo = str(self.inc())
         tree = numnodo + 'p'
         self.dot.node(tree,'If')
         self.dot.edge(padre,tree)
         self.dot.node(tree + 'h1','condicion')
-        self.dot.node(tree + 'h2','listaif')
+        self.dot.node(tree + 'h2','instrucciones')
         self.dot.node(tree + 'h3','listaelse')
         self.dot.edge(tree,tree + 'h1')
         self.dot.edge(tree,tree + 'h2')
         self.dot.edge(tree,tree + 'h3')
-        #---------AST
-        nombre = self.newTag('if')
-        verdadero = nombre + 'V'
-        falso = nombre + 'F'
-        fin = nombre +'end'
-        sielse = False
+        #--------------------------------------------AST
+        
+        nombre      = self.newTag('if')
+        verdadero   = nombre + 'V'
+        falso       = nombre + 'F'
+        fin         = nombre +'end'
+        hayelse     = False
 
         self.stack.append(nombre)
 
         resultado = self.InterpretarOperacion(condicion, tabla, tree + 'h1')
         cond = resultado[1]
-        self.concatenar('if(' + cond + ') goto ' + verdadero + ';')
-        self.concatenar('goto ' + falso + ';')
-        self.concatenar(verdadero + ':')
-        self.InterpretarIns(listaif, tabla, nombre, tree + 'h2')
+        self.concatenar('if(!' + cond + ') goto ' + falso + ';')
+        #self.concatenar('goto ' + falso + ';')
+        #self.concatenar(verdadero + ':')
+        self.InterpretarIns(insif, tabla, nombre, tree + 'h2')
+        self.concatenar('goto ' + fin + ';')
+        self.concatenar(falso + ':')
+        
+        self.addOpti(1,"Negando la concidion del if se elimina un salto innecesario.",ciclo.linea,3)
+        
         if(listaelse is not None):
-            for x in listaelse:
-                if(type(x) is tuple):
-                    condicionx = x[0]
-                    listax = x[1]
-                    #-----------AST
-                    newifelse = str(self.inc())
-                    newname = newifelse + 'p'
-                    self.dot.node(newname, 'Else If')
-                    self.dot.edge(tree + 'h3', newname)
-                    #-----------AST
-                    self.concatenar('goto ' + fin + ';')
-                    nombrex = self.newTag('elseif')
-                    verdaderox = nombrex + 'V'
-                    falsox = nombrex + 'F'
-                    self.concatenar(falso + ':')
-                    falso = falsox
-                    resultadox = self.InterpretarOperacion(condicionx,tabla, newname)
-                    condx = resultadox[1]
-                    self.concatenar('if(' + condx + ') goto ' + verdaderox + ';')
-                    self.concatenar('goto ' + falso + ';')
-                    self.concatenar(verdaderox + ':')
-                    self.InterpretarIns(listax, tabla, nombre, newname)
-                    self.concatenar('goto ' + fin + ';')
-                else:
+             for x in listaelse:
+                 if(type(x) is tuple):
+                     condicionx = x[0]
+                     listax = x[1]
+                     
+                     #-----------AST
+                     newifelse = str(self.inc())
+                     newname = newifelse + 'p'
+                     self.dot.node(newname, 'Else If')
+                     self.dot.edge(tree + 'h3', newname)
+                     #-----------AST
+
+                     nombrex = self.newTag('elseif')
+                     falsox = nombrex + 'F'
+                     resultadox = self.InterpretarOperacion(condicionx, tabla, newname)
+                     condx = resultadox[1]
+                     self.concatenar('if(!' + condx + ') goto ' + falsox + ';')
+                     self.InterpretarIns(listax, tabla, nombre, newname)
+                     self.concatenar('goto ' + fin + ';')
+                     self.concatenar(falsox + ':')
+                 else:
                     #------------AST
                     self.dot.node(tree + 'else', 'Else')
                     self.dot.edge(tree + 'h3', tree + 'else')
                     #------------AST
-                    sielse = True
-                    if(len(listaelse) == 1):
-                        self.concatenar('goto ' + fin + ';')
-                    self.concatenar(falso + ':')
-                    self.InterpretarIns(x,tabla,nombre,tree + 'else')
-                    self.concatenar(fin + ':')
-        
-        if(sielse == False):
-            self.concatenar(falso + ':')
-
+                    self.InterpretarIns(x, tabla, nombre, tree + 'else')
+                    
+        self.concatenar(fin + ':')
         self.stack.pop()
 
     #METODO PARA INTERPRETAR LOS SWITCHS
@@ -1147,7 +1205,7 @@ class Editor:
                     else:
                         self.errorSemantico('INDEX_ERROR',ins.linea,'Index out range (#dimension)')
             else:
-                self.errorSemantico('TYPE_ERROR',ins.linea,'El tipo debe ser el mismo')
+                self.errorSemantico('TYPE_ERROR',ins.linea,'El tipo debe ser el mismo as')
         else:
             self.errorSemantico('NONE_ERROR',ins.linea,'La variable no ha sido declarada')
 
@@ -1234,9 +1292,9 @@ class Editor:
 
     #METODO PARA VERIFICAR SI LOS TIPOS SON IGUALES
     def VerificarTipo(self, tipo1, tipo2):
-        if(tipo1 == 'int' and tipo2 == 'int'):
+        if(tipo1 == 'int' and (tipo2 == 'int' or tipo2 == 'double')):
             return True
-        elif(tipo1 == 'float' and (tipo2 == 'float' or tipo2 == 'double')):
+        elif(tipo1 == 'float' and (tipo2 == 'float' or tipo2 == 'double' or tipo2 == 'int')):
             return True
         elif(tipo1 == 'double' and (tipo2 == 'double' or tipo2 == 'float')):
             return True
@@ -1278,8 +1336,14 @@ class Editor:
             return 'int'
         elif(t1 == 'float' or t2 == 'float'):
             return 'float'
+        elif(t1 == 'int' and t2 == 'double'):
+            return 'int'
+        elif(t1 == 'int' and t2 == 'float'):
+            return 'int'
         elif(t1 == 'double' or t2 == 'double'):
             return 'float'
+        elif(t1 == 'char' or t2 == 'char'):
+            return 'char'
         else:
             return None
 
@@ -1376,10 +1440,10 @@ class Editor:
                         temporal = temp + ' = ' + valor1 + ' / ' + valor2 + ';'
                         self.concatenar(temporal)
                         valor1 = temp
-                        return (restipo, temp)
+                        return ('double', temp)
                     else:
                         nval = valor1 + ' / ' + valor2
-                        return (restipo , nval)
+                        return ('double' , nval)
                 elif signo == Aritmetica.MODULO:
                     self.dot.node(tree + '2','%')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
@@ -1455,6 +1519,8 @@ class Editor:
                 elif signo == Relacional.EQUIVALENTE:
                     self.dot.node(tree + '2','==')
                     restipo = self.checkOperacionTipo(tipo1,tipo2)
+                    if(restipo == 'char'):
+                        valor2 = "'" + valor2 + "'"
                     if(restipo is None):
                          self.errorSemantico('TYPE_ERROR',operacion.linea,'No se puede hacer la operacion entre tipos')
                     if(var is None):
@@ -1629,7 +1695,7 @@ class Editor:
                 if(type(variable.dimension) is list):
                     strtoreturn = variable.temporal
                     for x in range(0,len(lista)):
-                        posicion = self.InterpretarOperacion(lista[x],tabla)
+                        posicion = self.InterpretarOperacion(lista[x],tabla,padre)
                         postipo = posicion[0]
                         posval = str(posicion[1])
                         #if( posicion[1] < variable.dimension[x]):
@@ -1647,6 +1713,8 @@ class Editor:
             
             exp = self.InterpretarOperacion(operacion.exp,tabla,tree + '2')
             newtipo = exp[0]
+            temp = self.newTemp()
+            self.concatenar(temp + ' =  -' + str(exp[1]) + ';')
             newval ='-' + str(exp[1])
 
             self.dot.node(tree + '1','-')
@@ -1654,7 +1722,7 @@ class Editor:
             self.dot.edge(padre,tree + '1')
             self.dot.edge(padre,tree + '2')
             #---------AST
-            return(newtipo,newval)
+            return(newtipo,temp)
         elif isinstance(operacion, OpNotbit):
             #---------AST
             numnodo = str(self.inc())
@@ -1662,6 +1730,8 @@ class Editor:
             
             exp = self.InterpretarOperacion(operacion.exp, tabla, tree + '2')
             newtipo = exp[0]
+            temp = self.newTemp()
+            self.concatenar(temp + ' =  ~' + str(exp[1]) + ';')
             newval = '~'+str(exp[1])
             
             self.dot.node(tree + '1','~')
@@ -1669,7 +1739,7 @@ class Editor:
             self.dot.edge(padre,tree + '1')
             self.dot.edge(padre,tree + '2')
             #---------AST
-            return(newtipo,newval)
+            return(newtipo,temp)
         elif isinstance(operacion, OpNotlog):
             #---------AST
             numnodo = str(self.inc())
@@ -1677,6 +1747,8 @@ class Editor:
 
             exp = self.InterpretarOperacion(operacion.exp, tabla, tree + '2')
             newtipo = exp[0]
+            temp = self.newTemp()
+            self.concatenar(temp + ' =  !' + str(exp[1]) + ';')
             newval = '!'+str(exp[1])
             
             self.dot.node(tree + '1','!')
@@ -1684,7 +1756,7 @@ class Editor:
             self.dot.edge(padre,tree + '1')
             self.dot.edge(padre,tree + '2')
             #---------AST
-            return(newtipo,newval)
+            return(newtipo,temp)
         elif isinstance(operacion, OpTam):
             restipo = ''
             resval = ''
@@ -1834,7 +1906,7 @@ class Editor:
             #---------AST
             numnodo = str(self.inc())
             tree = numnodo + 'p'
-            self.dot.node(tree,'Ternario')
+            self.dot.node(tree,'Cast')
             self.dot.edge(padre, tree)
             self.dot.node(tree + '1',tipo)
             self.dot.node(tree + '2','expresion')
@@ -1975,7 +2047,7 @@ class Editor:
         self.numtag += 1
         return new 
 
-    #-------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------------
 
     #METODO PARA AVANZAR EN EL DEBUG
     def SiguientePaso(self):
@@ -2166,10 +2238,64 @@ class Editor:
         f.write(tshtml)
         f.close()
 
+    #METODO PARA CREAR EL REPORTE DE OPTIMIZACION
+    def ReporteOptimizacion(self):
+        tshtml = '''<html>
+        <head>
+        <style>
+        table {
+        width:100%;
+        }
+        table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        }
+        th, td {
+        padding: 15px;
+        text-align: left;
+        }
+        table#t01 tr:nth-child(even) {
+        background-color: #eee;
+        }
+        table#t01 tr:nth-child(odd) {
+        background-color: #fff;
+        }
+        table#t01 th {
+        background-color: orange;
+        color: white;
+        }
+        </style>
+        </head>
+        <body>
+        <h2>Reporte de Optimizacion</h2>
+        <table id="t01">
+        <tr>
+        <th>Id</th>
+        <th>Nombre</th>
+        <th>Descripcion</th>
+        <th>Regla</th>
+        <th>Linea</th>
+        </tr>
+         '''
+        conop = 1
+        for k, v in (self.tablaoptimizacion.optimizaciones.items()):
+            opti = self.tablaoptimizacion.getOptimizacion(k)
+            tshtml += '<tr><td>' + str(conop) + '</td><td>' + opti.optimizacion + '</td><td>' + opti.desc + '</td><td>' + str(opti.regla) + '</td><td>' + str(opti.linea) + '</td></tr>\n'
+            conop += 1
+
+        tshtml += '</table>\n</body>\n</html>'
+        f = open('ReporteOp.html', "w")
+        f.write(tshtml)
+        f.close()
+
     #METODO PARA VER LA TABLA DE SIMBOLOS
     def VerTablaSimbolos(self):
         os.system('start '+os.path.realpath('ReporteTs.html'))
         
+    #METODO PARA HACER EL REPORTE DE OPTIMIZACION
+    def VerOptimizacion(self):
+        os.system('start '+os.path.realpath('ReporteOp.html'))
+
     #METODO PARA VER EL REPORTE DE ERRORES
     def VerReporteErrores(self):
         os.system('start '+os.path.realpath('ReporteEr.html'))
@@ -2183,6 +2309,16 @@ class Editor:
         nuevo = errores.Error('SEMANTICO',descripcion,info1,info2)
         self.tablaErrores.newError(nuevo)
 
+    #METODO PARA AGREGAR UN REGISTRO DE OPTIMIZACION
+    def addOpti(self, num, desc, linea, regla):
+        tipo = ''
+        if(num == 1):
+            tipo = "MIRILLA"
+        else:
+            tipo = "BLOQUE"
+        opti = optimizacion.Optimizacion(tipo,desc,str(regla),linea)
+        self.tablaoptimizacion.newOptimizacion(opti)
+    
     #METODO PARA VER EL AST
     def VerAST(self):
         self.dot.render('Ast',view=True)
@@ -2265,6 +2401,7 @@ class Editor:
         self.tablaGlobal.simbolos.clear()
         self.tablaErrores.errores.clear()
         self.tablagramatical.producciones.clear()
+        self.tablaoptimizacion.optimizaciones.clear()
         self.stack.clear()
         self.stackLoop.clear()
         self.stackContinue.clear()

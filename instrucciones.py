@@ -14,6 +14,14 @@ class Funcion(Instruccion):
         self.listaparam = listaparam
         self.lista = lista
 
+#CLASE QUE MANEJA LAS LLAMADAS A FUNCIONES
+class Call(Instruccion):
+    #CONSTRUCTOR RECIBE EL IDENTIFICADOR Y LA LISTA DE PARAMETROS
+    def __init__(self, id, listaparam, linea):
+        self.id = id
+        self.listaparam = listaparam
+        self.linea = linea
+
 #CLASE QUE MANEJA UNA DECLARACION
 class Declaracion(Instruccion):
     #CONSTRUCTOR RECIBE EL TIPO, UNA LISTA DE NOMBRES Y EL VALOR DE UNA VARIABLE

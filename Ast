@@ -20,12 +20,56 @@ digraph AST {
 	"2ph2" -> "3p"
 	"3ph1" [label=var]
 	"3p" -> "3ph1"
-	"4p" [label=Printf]
+	"4p" [label=Declaracion]
 	"1ph3" -> "4p"
-	"4ph1" [label=ListaValores]
+	"4ph1" [label=int]
+	"4ph2" [label=ListaNombres]
 	"4p" -> "4ph1"
-	"5p" [label="%d"]
-	"4ph1" -> "5p"
-	"6p" [label=var]
-	"4ph1" -> "6p"
+	"4p" -> "4ph2"
+	"5p" [label=Variable]
+	"4ph2" -> "5p"
+	"5ph1" [label=var2]
+	"5p" -> "5ph1"
+	"6p" [label=If]
+	"1ph3" -> "6p"
+	"6ph1" [label=condicion]
+	"6ph2" [label=instrucciones]
+	"6ph3" [label=listaelse]
+	"6p" -> "6ph1"
+	"6p" -> "6ph2"
+	"6p" -> "6ph3"
+	"8p" [label=var]
+	"7p1" -> "8p"
+	"9p" [label=var2]
+	"7p3" -> "9p"
+	"7p1" [label="$t0"]
+	"7p3" [label="$t1"]
+	"6ph1" -> "7p1"
+	"6ph1" -> "7p2"
+	"6ph1" -> "7p3"
+	"7p2" [label="<"]
+	"10p" [label=Printf]
+	"6ph2" -> "10p"
+	"10ph1" [label=ListaValores]
+	"10p" -> "10ph1"
+	"11p" [label=si]
+	"10ph1" -> "11p"
+	"6pelse" [label=Else]
+	"6ph3" -> "6pelse"
+	"12p" [label=Printf]
+	"6pelse" -> "12p"
+	"12ph1" [label=ListaValores]
+	"12p" -> "12ph1"
+	"13p" [label=no]
+	"12ph1" -> "13p"
+	"14p" [label=Printf]
+	"1ph3" -> "14p"
+	"14ph1" [label=ListaValores]
+	"14p" -> "14ph1"
+	"15p" [label=Fin]
+	"14ph1" -> "15p"
+	"16p" [label=Return]
+	"1ph3" -> "16p"
+	"16ph1" [label=Expresion]
+	"16p" -> "16ph1"
 }

@@ -253,7 +253,7 @@ def p_instruccion(t):
                    | struct
                    | declastruct
                    | asignastruct
-                   | expresion
+                   | llamada
                    | comentario'''
     t[0] = t[1]
 
@@ -287,10 +287,15 @@ def p_nula(t):
     pass
 
 def p_return(t):
-    'return : RETURN expresion PUNTOYCOMA'
-    addProduccion('RETURN --> return EXPRESION ;', 'RETURN.VAL = newReturn(EXPRESION.VAL)')
+    '''return : RETURN expresion PUNTOYCOMA
+              | RETURN PUNTOYCOMA'''
+    if(t[2] == ';'):
+        addProduccion('RETURN --> return ;', 'RETURN.VAL = newReturn( )')
+        t[0] = Return(None,t.lexer.lineno)
+    else:
+        addProduccion('RETURN --> return EXPRESION ;', 'RETURN.VAL = newReturn(EXPRESION.VAL)')
+        t[0] = Return(t[2],t.lexer.lineno)
     addProduccion('INSTRUCCION --> RETURN','INSTRUCCION.VAL = RETURN.VAL')
-    t[0] = Return(t[2],t.lexer.lineno)
 
 def p_break(t):
     'break : BREAK PUNTOYCOMA'
@@ -330,9 +335,17 @@ def p_funcion(t):
 def p_opcionfunc(t):
     '''opcionfunc : PARC
                   | listaparams PARC'''
-    addProduccion('OPCIONFUNC --> ) | LISTAPARAMS )','OPCIONFUNC.VAL = LISTAPARAMS.VAL')
-    t[0] = t[1]
+    if(t[1] == ')'):
+        t[0] = None
+    else:
+        addProduccion('OPCIONFUNC --> ) | LISTAPARAMS )','OPCIONFUNC.VAL = LISTAPARAMS.VAL')
+        t[0] = t[1]
     
+def p_llamada(t):
+    '''llamada : IDENTIFICADOR PARA PARC PUNTOYCOMA
+               | IDENTIFICADOR PARA listavalores PARC PUNTOYCOMA'''
+    t[0] = Call(t[1], t[3],t.lexer.lineno)
+
 def p_listaparams(t):
     'listaparams : listaparams COMA parametro'
     addProduccion('LISTAPARAMS --> LISTAPARAMS , PARAMETRO','LISTAPARAMS.VAL = LISTAPARAMS.VAL + PARAMETRO.VAL')
@@ -562,15 +575,15 @@ def p_default(t):
     t[0] = t[3]
 
 def p_for(t):
-    'for : FOR PARA inicializacion expresion PUNTOYCOMA expresion PARC LLAVEA instrucciones LLAVEC'
-    addProduccion('FOR --> for ( INICIALIZACION EXPRESION ; EXPRESION ) { INSTRUCCIONES }', 'FOR.VAL = newFor(INICIALIZACION.VAL, EXPRESION.VAL, EXPRESION2.VAL, INSTRUCCIONES.VAL)')
+    'for : FOR PARA inicializar expresion PUNTOYCOMA expresion PARC LLAVEA instrucciones LLAVEC'
+    addProduccion('FOR --> for ( INICIALIZAR EXPRESION ; EXPRESION ) { INSTRUCCIONES }', 'FOR.VAL = newFor(INICIALIZAR.VAL, EXPRESION.VAL, EXPRESION2.VAL, INSTRUCCIONES.VAL)')
     addProduccion('INSTRUCCION --> FOR','INSTRUCCION.VAL = FOR.VAL')
     t[0] = For(t[3],t[4],t[6],t[9],t.lexer.lineno)
 
 def p_inicializar(t):
-    '''inicializacion : declaracion
+    '''inicializar : declaracion
                       | asignacion'''
-    addProduccion('INICIALIZACION --> DECLARACION ','INICIALIZACION.VAL = DECLARACION.VAL')
+    addProduccion('INICIALIZAR --> DECLARACION ','INICIALIZAR.VAL = DECLARACION.VAL')
     t[0] = t[1]
 #-----------------------------------------------EXPRESIONES
 def p_exprexion(t):
@@ -645,7 +658,8 @@ def p_cast(t):
     addProduccion('EXPRESION --> ( TIPO ) EXPRESION','EXPRESION.VAL = newCasteo(TIPO.VAL, EXPRESION.VAL)')
     t[0] = Casteo(t[2],t[4],t.lexer.lineno)
 
-def p_llamada(t):
+
+def p_ellamada(t):
     'expresion : IDENTIFICADOR PARA listavalores PARC'
     addProduccion('EXPRESION --> id ( LISTAVALORES )','EXPRESION.VAL = newLlamada(id.lexval, LISTAVALORES.VAL)')
     t[0] = Llamada(t[1], t[3], t.lexer.lineno)
