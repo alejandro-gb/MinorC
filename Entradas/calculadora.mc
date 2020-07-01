@@ -17,10 +17,10 @@ int main(){
 	}else if(signo=="*"){
 		printf("El resultado de la multiplicacion es: %d\n", primer_numero*segundo_numero);
 	}else if(signo=="/"){
-		printf("El resultado de la division es: %d\n", primer_numero/segundo_numero);
+		printf("El resultado de la division es: %f\n", primer_numero/segundo_numero);
 	}
 	
-	printf("¿Deseas continuar? Y/N\n");
+	printf("Deseas continuar? Y/N\n");
 	char respuesta = scanf();
 	if(respuesta == "Y" || respuesta=="y"){
         printf("\n");

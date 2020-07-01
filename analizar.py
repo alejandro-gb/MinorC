@@ -269,16 +269,28 @@ def p_struct(t):
     t[0] = Struct(t[2],t[4],t.lexer.lineno)
 
 def p_declastruct(t):
-    'declastruct : STRUCT IDENTIFICADOR IDENTIFICADOR PUNTOYCOMA'
-    addProduccion('ARREGLO --> struc id id ;', 'DECLASTRUCT.VAL = newDeclaStruct(id.lexval,id2.lexval)')
-    addProduccion('INSTRUCCION --> DECLASTRUCT','INSTRUCCION.VAL = DECLASTRUCT.VAL')
-    t[0] = NewStruct(t[2],t[3],t.lexer.lineno)
+    '''declastruct : STRUCT IDENTIFICADOR IDENTIFICADOR PUNTOYCOMA
+                   | STRUCT IDENTIFICADOR IDENTIFICADOR lista_dimension PUNTOYCOMA'''
+    if(t[4] == ';'):
+        addProduccion('ARREGLO --> struc id id ;', 'DECLASTRUCT.VAL = newDeclaStruct(id.lexval,id2.lexval)')
+        addProduccion('INSTRUCCION --> DECLASTRUCT','INSTRUCCION.VAL = DECLASTRUCT.VAL')
+        t[0] = NewStruct(t[2],t[3],None,t.lexer.lineno)
+    else:
+        addProduccion('ARREGLO --> struc id id LISTADIMENSIONES ;', 'DECLASTRUCT.VAL = newDeclaStruct(id.lexval,id2.lexval,LISTADIMENSIONES.VAL)')
+        addProduccion('INSTRUCCION --> DECLASTRUCT','INSTRUCCION.VAL = DECLASTRUCT.VAL')
+        t[0] = NewStruct(t[2],t[3],t[4],t.lexer.lineno)
 
 def p_asignastruct(t):
-    'asignastruct : IDENTIFICADOR PUNTO asignacion'
-    addProduccion('ASIGNASTRUCT --> id . ASIGNACION', 'ASIGNASTRUCT.VAL = newAsignastruct(id.lexval, ASIGNACION.VAL)')
-    addProduccion('INSTRUCCION --> ASIGNASTRUCT','INSTRUCCION.VAL = ASIGNASTRUCT.VAL')
-    t[0] = ToStruct(t[1],t[3],t.lexer.lineno)
+    '''asignastruct : IDENTIFICADOR PUNTO asignacion
+                    | IDENTIFICADOR lista_dimension PUNTO asignacion'''
+    if(t[2] == '.'):
+        addProduccion('ASIGNASTRUCT --> id . ASIGNACION', 'ASIGNASTRUCT.VAL = newAsignastruct(id.lexval, ASIGNACION.VAL)')
+        addProduccion('INSTRUCCION --> ASIGNASTRUCT','INSTRUCCION.VAL = ASIGNASTRUCT.VAL')
+        t[0] = ToStruct(t[1],t[3],None,t.lexer.lineno)
+    else:
+        addProduccion('ASIGNASTRUCT --> id LISTADIMENSION . ASIGNACION', 'ASIGNASTRUCT.VAL = newAsignastruct(id.lexval, ASIGNACION.VAL)')
+        addProduccion('INSTRUCCION --> ASIGNASTRUCT','INSTRUCCION.VAL = ASIGNASTRUCT.VAL')
+        t[0] = ToStruct(t[1],t[4],t[2],t.lexer.lineno)
 
 def p_nula(t):
     'nula : PUNTOYCOMA'
@@ -369,16 +381,34 @@ def p_declaracion(t):
     t[0] = Declaracion(t[1],t[2],t.lexer.lineno)
 
 def p_arreglo(t):
-    'arreglo : tipo IDENTIFICADOR lista_dimension PUNTOYCOMA'
+    'arreglo : tipo arraylist PUNTOYCOMA'
     addProduccion('ARREGLO --> TIPO id LISTADIMENSION;', 'ARREGLO.VAL = newArreglo(TIPO.VAL, id.lexval, LISTADIMENSION.VAL)')
     addProduccion('INSTRUCCION --> ARREGLO','INSTRUCCION.VAL = ARREGLO.VAL')
-    t[0] = Arreglo(t[1], t[2], t[3], None, t.lexer.lineno)
+    #t[0] = Arreglo(t[1], t[2], t[3], None, t.lexer.lineno)
+    t[0] = Arreglo(t[1], t[2], None, None, t.lexer.lineno)
 
-def p_arregloinicializado(t):
-    'arreglo : tipo IDENTIFICADOR lista_dimension IGUAL inicializacion PUNTOYCOMA'
-    addProduccion('ARREGLO --> TIPO id LISTADIMENSION = INICIALIZACION;', 'ARREGLO.VAL = newArreglo(TIPO.VAL, id.lexval, LISTADIMENSION.VAL, INICIALIZACION.VAL)')
-    addProduccion('INSTRUCCION --> ARREGLO','INSTRUCCION.VAL = ARREGLO.VAL')
-    t[0] = Arreglo(t[1], t[2], t[3], t[5], t.lexer.lineno)
+#def p_arregloinicializado(t):
+#    'arreglo : tipo IDENTIFICADOR lista_dimension IGUAL inicializacion PUNTOYCOMA'
+#    addProduccion('ARREGLO --> TIPO id LISTADIMENSION = INICIALIZACION;', 'ARREGLO.VAL = newArreglo(TIPO.VAL, id.lexval, LISTADIMENSION.VAL, INICIALIZACION.VAL)')
+#    addProduccion('INSTRUCCION --> ARREGLO','INSTRUCCION.VAL = ARREGLO.VAL')
+#    t[0] = Arreglo(t[1], t[2], t[3], t[5], t.lexer.lineno)
+
+def p_arraylist(t):
+    'arraylist : arraylist COMA unarray'
+    t[1].append(t[3])
+    t[0] = t[1]
+
+def p_unarraylist(t):
+    'arraylist : unarray'
+    t[0] = [t[1]]
+
+def p_unarray(t):
+    '''unarray : IDENTIFICADOR lista_dimension
+               | IDENTIFICADOR lista_dimension IGUAL inicializacion '''
+    if(len(t) == 3):
+        t[0] = (t[1], t[2])
+    else:
+        t[0] = (t[1],t[2],t[4])
 
 def p_inicializacion(t):
     '''inicializacion : LLAVEA listaini LLAVEC
@@ -750,9 +780,14 @@ def p_expscan(t):
     t[0] = Scanf(t.lexer.lineno)
 
 def p_fromStruct(t):
-    'expresion : IDENTIFICADOR PUNTO expresion'
-    addProduccion('EXPRESION --> id . EXPRESION','EXPRESION.VAL = (id.lexval, EXPRESION.VAL)')
-    t[0] = fromStruct(t[1],t[3],t.lexer.lineno)    
+    '''expresion : IDENTIFICADOR PUNTO expresion
+                 | IDENTIFICADOR lista_dimension PUNTO expresion'''
+    if(t[2] == '.'):
+        addProduccion('EXPRESION --> id . EXPRESION','EXPRESION.VAL = (id.lexval, EXPRESION.VAL)')
+        t[0] = fromStruct(t[1],t[3],None,t.lexer.lineno)
+    else:
+        addProduccion('EXPRESION --> id . EXPRESION','EXPRESION.VAL = (id.lexval, EXPRESION.VAL)')
+        t[0] = fromStruct(t[1],t[4],t[2],t.lexer.lineno)
 
 #METODO PARA AGREGAR UNA PRODUCCION AL REPORTE GRAMATICAL
 def addProduccion(produccion, regla):

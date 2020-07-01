@@ -61,18 +61,20 @@ class Struct(Instruccion):
 #CLASE QUE MANEJA UN NUEVO STRUCT
 class NewStruct(Instruccion):
     #CONSTRUCTOR RECIBE EL ID DEL STRUCT Y EL ID DE LA VARIABLE
-    def __init__(self,idstruct,idvar,linea):
+    def __init__(self, idstruct, idvar, listadim, linea):
         self.idstruct = idstruct
         self.idvar = idvar
         self.linea = linea
+        self.listadim = listadim
 
 #CLASE PARA ASIGNAR UN VALOR A UNA PARTE DEL STRUCT DEL STRUCT
 class ToStruct(Instruccion):
     #CONSTRUCTOR RECIBE EL ID DEL STRUCT Y UNA ASIGNACION 
-    def __init__(self,id,asigna,linea):
+    def __init__(self,id,asigna,listadim,linea):
         self.id = id
         self.asigna = asigna
         self.linea = linea
+        self.listadim = listadim
 
 #CLASE QUE MANEJA LOS CICLOS WHILE
 class While(Instruccion):
@@ -312,9 +314,10 @@ class Referencia(Operacion):
         self.linea = linea
         
 class fromStruct(Operacion):
-    def __init__(self, ide, exp, linea):
+    def __init__(self, ide, exp, listadim, linea):
         self.ide = ide
         self.exp = exp
+        self.listadim = listadim
         self.linea = linea
 
 class Scanf(Operacion):

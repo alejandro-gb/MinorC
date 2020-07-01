@@ -1023,7 +1023,7 @@ class Editor:
              #   self.errorSemantico('TYPE_ERROR',ins.linea,'No se pudo asignar el valor (type)')
 
     #METODO PARA INTERPRETAR UN STRUCT
-    def InterpretarStruct(self,ins,tabla,ambito, padre = None):
+    def InterpretarStruct(self, ins, tabla, ambito, padre = None):
         idstruct = ins.id
         listains = ins.lista
         #---------AST
@@ -1059,15 +1059,17 @@ class Editor:
                     valor.append((tipo,nombre))
             elif isinstance(ins, Arreglo):
                 tipo = ins.tipo
-                nombre = ins.nombre
-                #--------AST
-                self.dot.node(nombre+numnew,nombre)
-                self.dot.edge(treenew,nombre+numnew)
-                self.dot.node(tipo+numnew,tipo)
-                self.dot.edge(treenew,tipo+numnew)
-                #--------AST
-                dimensiones = ins.dimensiones
-                valor.append((tipo,nombre,'array'))
+                opciones = ins.nombre
+                for opcion in opciones:
+                    nombre = opcion[0]
+                    #--------AST
+                    self.dot.node(nombre + numnew,nombre)
+                    self.dot.edge(treenew,nombre + numnew)
+                    self.dot.node(tipo + numnew,tipo)
+                    self.dot.edge(treenew, tipo + numnew)
+                    #--------AST
+                    dimensiones = opcion[1]
+                    valor.append((tipo,nombre,'array'))
             else:
                 self.errorSemantico('INSTRUCTION_ERROR',ins.linea,'en un struct solo se declaran variables')
         simbolo = tablaSimbolos.Simbolo(num, idstruct, temporal, 'STRUCT', valor, ambito, [])
@@ -1090,8 +1092,16 @@ class Editor:
             self.errorSemantico('VARIABLE_ERROR',ins.linea,'La variable no existe')
         else:
             if(sim.tipo == 'STRUCT'):
+                sizeval = ''
+                newtemp = ''
+                if ins.listadim is not None:
+                    for dim in ins.listadim:
+                        newtemp = self.newTemp()
+                        self.concatenar(newtemp + ' = array();')
+                        size = self.InterpretarOperacion(dim, tabla, tree+'h2')
+                        sizeval = size[1]
                 num = self.getId()
-                simbolo = tablaSimbolos.Simbolo(num, ins.idvar, '', sim.nombre, len(sim.dimension), ambito)
+                simbolo = tablaSimbolos.Simbolo(num, ins.idvar, newtemp, sim.nombre, len(sim.dimension),ambito, sizeval)
                 sim.dimension.append(len(sim.dimension))
                 tabla.newSimbolo(simbolo)
             else:
@@ -1099,7 +1109,7 @@ class Editor:
 
     #CLASE QUE MANEJA LA ASIGNACION A UN STRUCT
     def InterpretarToStruct(self,ins,tabla,ambito, padre = None):
-        sim = self.BuscarSimbolo(ins.id,tabla)
+        sim = self.BuscarSimbolo(ins.id, tabla)
         #---------AST
         numnodo = str(self.inc())
         tree = numnodo + 'p'
@@ -1120,6 +1130,12 @@ class Editor:
             valor = self.InterpretarOperacion(asig.valor, tabla, tree + 'h2')
             valtipo = valor[0]
             valval = valor[1]
+            dims = ins.listadim
+            if dims is not None:
+                for d in dims:
+                    result = self.InterpretarOperacion(d, tabla, tree+'h1')
+                    resval = result[1]
+                    temp = temp + '[' + str(resval) + ']'
             if(asig.dimensiones is None):
                 if(valtipo == 'char'):
                     valval = "'"+valval+"'"
@@ -1212,9 +1228,9 @@ class Editor:
     #METODO PARA INTERPRETAR UN ARREGLO
     def InterpretarArreglo(self, ins, tabla, ambito, padre = None):
         tipo = ins.tipo
-        nombre = ins.nombre
-        dimensiones = ins.dimensiones
-        listaval = ins.listavalores
+        opciones = ins.nombre
+        #dimensiones = ins.dimensiones
+        #listaval = ins.listavalores
         valor = []
         #---------AST
         numnodo = str(self.inc())
@@ -1222,7 +1238,7 @@ class Editor:
         self.dot.node(tree,'Arreglo')
         self.dot.edge(padre,tree)
         self.dot.node(tree + 'h1',tipo)
-        self.dot.node(tree + 'h2',nombre)
+        self.dot.node(tree + 'h2','Arreglo')
         self.dot.node(tree + 'h3','LISTADIMENSIONES')
         self.dot.node(tree + 'h4','LISTAVALORES')
         self.dot.edge(tree, tree + 'h1')
@@ -1230,65 +1246,71 @@ class Editor:
         self.dot.edge(tree, tree + 'h3')
         self.dot.edge(tree, tree + 'h4')
         #---------AST
-        if self.VerificarAmbito(nombre,ambito,tabla):
-            ide = self.getId()
-            temporal = self.newTemp()
-            #TIPO ID LISTADIMENSIONES ;
-            numdim = len(dimensiones)
-            dims = []
-            for x in dimensiones:
-                if(type(x) is str):
-                    dims.append(100)
-                else:
-                    val = self.InterpretarOperacion(x, tabla,tree + 'h3')
-                    newtipo = val[0]
-                    newval = val[1]
-                    dims.append(newval)
+        for opcion in opciones:
+            nombre = opcion[0]
+            dimensiones = opcion[1]
+            listaval = None
+            if(len(opcion) == 3):
+                listaval = opcion[2]
+            if self.VerificarAmbito(nombre,ambito,tabla):
+                ide = self.getId()
+                temporal = self.newTemp()
+                #TIPO ID LISTADIMENSIONES ;
+                numdim = len(dimensiones)
+                dims = []
+                for x in dimensiones:
+                    if(type(x) is str):
+                        dims.append(100)
+                    else:
+                        val = self.InterpretarOperacion(x, tabla,tree + 'h3')
+                        newtipo = val[0]
+                        newval = val[1]
+                        dims.append(newval)
                     
-            self.concatenar(temporal + '=' + 'array();')
-            if(listaval is not None):
-                if(type(listaval) is not list):
-                    resultado = self.InterpretarOperacion(listaval,tabla,tree + 'h4')
-                    valor = resultado[1]
-                    tipo = 'char*'
-                    simbolo = tablaSimbolos.Simbolo(ide, nombre, temporal, tipo, valor, ambito)
-                    tabla.newSimbolo(simbolo)
-                    if('$' in valor):
-                        self.concatenar(temporal + ' = ' + valor + ';')
-                    else:    
-                        self.concatenar(temporal + ' = ' + "'" + valor + "';")
-                    return
-                else:
-                    for x in range(0,len(listaval)):
-                        for y in range(0,len(listaval[x])):
-                            resultado = self.InterpretarOperacion(listaval[x][y],tabla,tree + 'h4')
-                            restipo = resultado[0]
-                            resval = resultado[1]
-                            if self.VerificarTipo(tipo, restipo):
-                                valor.append(resval)
-                                if(len(dimensiones) == 1):
-                                    if(len(listaval[x]) < dims[0]+1 ):
-                                        self.concatenar(temporal + '['+str(y)+'] = '+str(resval)+';')
-                                    else:
-                                        self.errorSemantico('INDEX_ERROR',ins.linea,'Exeso de elementos en el inicializador del array')
-                                else:
-                                    if(len(listaval) < dims[0]+1):
-                                        if(len(listaval[x]) < dims[1]+1):
-                                            self.concatenar(temporal + '['+str(x)+']['+str(y)+'] = '+str(resval)+';')
+                self.concatenar(temporal + '=' + 'array();')
+                if(listaval is not None):
+                    if(type(listaval) is not list):
+                        resultado = self.InterpretarOperacion(listaval,tabla,tree + 'h4')
+                        valor = resultado[1]
+                        tipo = 'char*'
+                        simbolo = tablaSimbolos.Simbolo(ide, nombre, temporal, tipo, valor, ambito)
+                        tabla.newSimbolo(simbolo)
+                        if('$' in valor):
+                            self.concatenar(temporal + ' = ' + valor + ';')
+                        else:    
+                            self.concatenar(temporal + ' = ' + "'" + valor + "';")
+                        return
+                    else:
+                        for x in range(0,len(listaval)):
+                            for y in range(0,len(listaval[x])):
+                                resultado = self.InterpretarOperacion(listaval[x][y],tabla,tree + 'h4')
+                                restipo = resultado[0]
+                                resval = resultado[1]
+                                if self.VerificarTipo(tipo, restipo):
+                                    valor.append(resval)
+                                    if(len(dimensiones) == 1):
+                                        if(len(listaval[x]) < dims[0]+1 ):
+                                            self.concatenar(temporal + '['+str(y)+'] = '+str(resval)+';')
                                         else:
                                             self.errorSemantico('INDEX_ERROR',ins.linea,'Exeso de elementos en el inicializador del array')
                                     else:
-                                        self.errorSemantico('INDEX_ERROR',ins.linea,'Exeso de elementos en el inicializador del array')
-                            else:
-                                self.errorSemantico('TYPE_ERROR',ins.linea,'Los elementos del arreglo deben ser del mismo tipo')
+                                        if(len(listaval) < dims[0]+1):
+                                            if(len(listaval[x]) < dims[1]+1):
+                                                self.concatenar(temporal + '['+str(x)+']['+str(y)+'] = '+str(resval)+';')
+                                            else:
+                                                self.errorSemantico('INDEX_ERROR',ins.linea,'Exeso de elementos en el inicializador del array')
+                                        else:
+                                            self.errorSemantico('INDEX_ERROR',ins.linea,'Exeso de elementos en el inicializador del array')
+                                else:
+                                    self.errorSemantico('TYPE_ERROR',ins.linea,'Los elementos del arreglo deben ser del mismo tipo')
             
-            for x in range(0,len(dims)):
-                if(dims[x] == 100):
-                    dims[x] = None
-            simbolo = tablaSimbolos.Simbolo(ide, nombre, temporal, tipo, valor, ambito, dims)
-            tabla.newSimbolo(simbolo)
-        else:
-            self.errorSemantico('VARIABLE_ERROR',ins.linea,'La variable ya ha sido declarada anteriormente')
+                for x in range(0,len(dims)):
+                    if(dims[x] == 100):
+                        dims[x] = None
+                simbolo = tablaSimbolos.Simbolo(ide, nombre, temporal, tipo, valor, ambito, dims)
+                tabla.newSimbolo(simbolo)
+            else:
+                self.errorSemantico('VARIABLE_ERROR',ins.linea,'La variable ya ha sido declarada anteriormente')
 
     #METODO PARA VERIFICAR SI LOS TIPOS SON IGUALES
     def VerificarTipo(self, tipo1, tipo2):
@@ -1663,6 +1685,8 @@ class Editor:
                 cadena = cadena.replace("\\'","'")
             if("\\\\" in cadena):
                 cadena = cadena.replace("\\\\","\\")
+            if("\\t" in cadena):
+                cadena = cadena.replace("\\t","    ")
             #---------AST
             numnodo = str(self.inc())
             tree = numnodo + 'p'
@@ -1994,8 +2018,17 @@ class Editor:
                 objetotipo = objeto.tipo
                 struct = self.BuscarSimbolo(objetotipo,tabla)
                 if struct is not None:
+                    toreturn = ''
+                    if operacion.listadim is not None:
+                        strtemp = ''
+                        for i in operacion.listadim:
+                            restemp = self.InterpretarOperacion(i,tabla,tree+'h1')
+                            restempval = str(restemp[1])
+                            strtemp += '[' + restempval + ']'
+                        toreturn = struct.temporal + strtemp +'['+ str(objetonum) + ']'
+                    else:
+                       toreturn = struct.temporal + '['+ str(objetonum) + ']' 
                     variables = struct.valor
-                    toreturn = struct.temporal + '['+ str(objetonum) + ']'
                     tipotoreturn = 'void'
                     if isinstance(operacion.exp, Acceso):
                         name = operacion.exp.id

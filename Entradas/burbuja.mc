@@ -33,7 +33,7 @@ int main()
 	imprimirBurbuja10();
 	printf("---------------------------\n");
 	burbuja10();
-	printf("Arreglo ordenado\n");
+	printf("Arreglo Desordenado\n");
 	imprimirBurbuja10();
 }
 
