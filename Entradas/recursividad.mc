@@ -21,7 +21,8 @@ double potencia(double base, double exp)
 int mcd(int n1, int n2)
 {
 	if(n2 != 0) {
-		return mcd(n2, n1 % n2);
+		int x = n1%n2;
+		return mcd(n2, x);
 	} else {
 		return n1;
 	}

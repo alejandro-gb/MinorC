@@ -1975,10 +1975,10 @@ class Editor:
                     
             self.concatenar('goto ' + nombre +';')
             self.concatenar('ra' + str(self.numfunc) + ':')
-            if(self.ismain == False):
-                self.concatenar('$sp = $sp - 1;')
             contparam = 0
             for param in params:
+                if(self.ismain == False):
+                    self.concatenar('$sp = $sp - 1;')
                 self.concatenar('$a' + str(contparam) + '= $s1[$sp];')
                 contparam += 1
             self.numfunc += 1
