@@ -1,0 +1,19 @@
+int cubo(int b)
+{
+	return b*b*b;
+}
+
+int cuadrado(int a){
+	return a*a;
+}
+
+int main()
+{
+	int var1 = 2;
+	int res = cuadrado(var1);
+	printf("al cuadrado: %d",res);
+	
+	int res2 = cubo(var1);
+	printf("al cubo: %d",res2);
+	return 0;
+}

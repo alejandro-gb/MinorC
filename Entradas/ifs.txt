@@ -1,0 +1,66 @@
+//EL NUMERO INGRESADO ES NEGATIVO
+int main() {
+   
+    printf("Enter an integer: ");
+    int number = scanf();
+    // true if number is less than 0
+    if (number < 0) {
+        printf("You entered %d.\n", number);
+    }
+
+    printf("The if statement is easy.");
+    //return 0;
+}
+
+//NUMEROS PARES O IMPARES
+int main() {
+    
+    printf("Enter an integer: ");
+    int number = scanf();
+
+    // True if the remainder is 0
+    if  (number % 2 == 0) {
+        printf("%d Es un numero par.",number);
+    }
+    else {
+        printf("%d Es un numero impar.",number);
+    }
+
+    //return 0;
+}
+
+//PRUEBAS IF
+int main(){
+	int var1 = 5;
+	int var2 = 8;
+	if(var1<var2){
+		printf("var 1 es menor a var 2");
+	}else if(var2 < var1){
+		printf("var 2 es menor a var 1");
+	}else if(var1 == var2){
+		printf("son iguales");
+	}	
+	else{
+		printf("var 1 es mayor a var 2");
+	}
+	//printf("Los valores son : %d %d \n",var1,var2);
+}
+
+
+//IFS ANIDADOS
+int main()
+{
+	int a = 100;
+	int b = 200;
+
+	if(a == 100)
+	{
+		if(b == 200){
+			printf("a es 100 y b es 200");
+		}
+	}
+
+	printf("a es : %d\n:", a);
+	printf("b es : %d\n:", b);
+	return 0;
+}

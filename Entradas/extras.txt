@@ -1,0 +1,352 @@
+int a = 5;
+float b = 6.5;
+double c = 7.9;
+char d = 'd';
+char s[] = "hola";
+int dim1[5];
+float dim2[2][3];
+double dim3[8];
+char dim4[4];
+
+int main()
+{
+	int var = 5+6+2;
+	printf("%d",var);
+}
+
+Operaciones
+int a = 1 + 2;
+int b = 1 - 2;
+int c = 1 * 2;
+int d = 1 / 2;
+int e = 1 % 2;
+
+int f = 1 == 2;
+int g = 1 != 2;
+int h = 1 < 2;
+int i = 1 > 2;
+int j = 1 <= 2;
+int k = 1 >= 2;
+
+int l = 1 && 2;
+int m = 1 || 2;
+
+int n = -2;
+int o = !1;
+int p = ~0;
+
+int q = 1 << 2;
+int r = 1 >> 2;
+int s = 1 & 2;
+int t = 1 | 2;
+int u = 1 ^ 2;
+
+int v;
+int w;
+
+v=1;
+w=++v;
+w=v++;
+
+v=3;
+w=v--;
+w=--v;
+
+//ARREGLOS
+int nums[5] = {1,2,3,4,5};
+
+int num[5];
+num[0] = 0;
+num[1] = 0;
+num[2] = 0;
+num[3] = 0;
+num[4] = 0;
+
+int main()
+{
+	int n[10];
+	int i,j;
+	
+	for(i = 0 ; i < 10 ; i++)
+	{
+		n[i] = i + 100;
+	}
+
+	for(j = 0 ; j < 10 ; j++)
+	{
+		printf("Elemento pos %d = %d",j, n[j]);	
+	}
+	return 0;
+}
+
+double matriz[2][2];
+int cubo[5][10][4];
+
+int matriz[3][4] = {
+{0,1,2,3},
+{4,5,6,7},
+{8,9,10,11}
+};
+
+int main()
+{
+	int a[5][2] = {{0,0},{1,2},{2,4},{3,6},{4,8}};
+	int i,j;	
+
+
+	for(i = 0; i < 5 ; i++)
+	{
+		for(j = 0; j<2;j++)
+		{
+			printf("i: %d j: %d",i,j);
+			printf("valor: %d",a[i][j]);
+		}
+	}
+}
+
+//PUNTEROS
+
+int func1(int a)
+{
+	a = 100;
+}
+
+int main()
+{
+	int var1 = 5;
+	func1(&var1);
+	printf("%d",var1);
+}
+
+//STRUCTS
+struct Books
+{	
+	int book_id;
+	char titulo[];	
+	
+};
+
+
+
+struct agenda
+{
+	int id;
+	char letra;
+	double valor;
+};
+
+
+struct Agenda
+{
+	char nombre[];
+	char direccion[];
+	int telefonos[3];	
+};
+
+int main()
+{
+	struct Agenda contacto;
+	contacto.nombre = "Luis";
+	contacto.direccion = "zona 5";
+	contacto.telefonos[0] = 456;
+	contacto.telefonos[1] = 654;
+	contacto.telefonos[2] = 789;
+
+	printf("Los telefonos de Luis son: ");
+	for(int i = 0 ; i < 3 ; i++){
+		printf("%d",contacto.telefonos[i]);
+	}
+}
+
+//SCAN F
+int main()
+{
+	int a = scanf();
+	printf("%d",a);
+	return 0;
+}
+
+
+int main()
+{
+	struct punto
+	{
+		int x,y;
+	};
+	
+	struct punto mipunto;
+	mipunto.x = 10;
+	mipunto.y = 15;
+	printf("%d %d \n", mipunto.x, mipunto.y);
+}
+
+//HELLO WORLD
+int main(){
+	printf("Hola Mundo! \n");
+	return 0;
+}
+
+//VARIABLES
+int main(){
+	int a,b;
+	int c;
+	float f;
+
+	a = 10;
+	b = 20;
+
+	c = a + b;
+	printf("Value of c : %d \n", c);
+	
+	f = 70.0/3.0;
+	printf("Value of f : %f \n",f);
+
+	return 0;
+
+}
+
+//PRUEBA DOWHILE
+int main () {
+   int a = 10;
+   do {
+      printf("value of d: %d\n", a);
+      a = a + 1;
+   }while( a < 20 );
+}
+
+
+
+
+
+
+//Prueba while
+int main()
+{
+	int a = 10;
+	while(a < 20)
+	{
+		printf("value of a: %d\n", a);
+		a += 1;
+	}
+	return 0;
+}
+
+//PRUEBA AMBITOS
+int a = 0;
+int main(){
+	printf("Hello World");
+	int a = 5;
+	if(a>0){
+		int a = 6;
+		printf("%d",a);
+	}
+	printf("%d",a);
+	return 0;
+}
+
+#Hello World
+#6
+#5
+
+
+
+//ASIGNACION COMPUESTA
+
+
+
+//OPERADOR TERNARIO
+int main()
+{
+	int a = 10;
+	int b;
+	b = (a == 1) ? 20 : 30;
+	printf("Value of b is %d\n",b);
+
+	b = (a == 10) ? 20 : 30;
+	printf("Value of b is %d\n",b);
+}
+
+//CASTEOS
+int main()
+{
+	int sum = 17,count = 5;
+	double mean;
+
+	mean = (double)sum / count;
+	printf("Value of mean : %f\n",mean);
+	return 0;
+}
+
+//PRUEBA CONTINUE
+
+
+//PRUEBA AMBITOS
+int a = 8;
+int main()
+{
+	int a = 5;
+	a = 25;
+}
+
+
+//MIS FUNCIONES
+
+
+
+//FUNCION 2
+
+int f1(int a)
+{
+	return f2(a);
+}
+
+int f2(int a)
+{
+	return a*a;
+}
+
+int main()
+{
+	int a = 5;
+	a = f1(a);
+	printf("%d",a);
+}
+
+//FACTORIAL RECURSIVA
+int fact(int a)
+{
+	if(a<=1)
+	{
+		return 1;		
+	}else
+	{
+		return a*fact(a-1);
+	}
+}
+
+int main()
+{
+	printf("%d",fact(3));
+}
+
+//factorial no recursivo
+int fact(int x)
+{
+	int res = 1;
+	for(int i = 2; i <= x; i++)
+	{
+		res = res * i;	
+	} 
+	return res;
+}
+
+int main()
+{
+
+int resultado = fact(3);
+printf("%d",resultado);
+
+}
+
+
+

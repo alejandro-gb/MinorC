@@ -1,0 +1,80 @@
+//PRUEBA SWITCH
+int main () {
+
+   char grade = 'B';
+
+   switch(grade) {
+      case 'A' :
+         printf("Excellent!\n" );
+         break;
+      case 'B' :
+         printf("Almost!\n" );
+         break;
+      case 'C' :
+         printf("Well done\n" );
+         break;
+      case 'D' :
+         printf("You passed\n" );
+         break;
+      case 'F' :
+         printf("Better try again\n" );
+         break;
+      default :
+         printf("Invalid grade\n" );
+   }
+   
+   printf("Your grade is  %c\n", grade );
+ 
+   return 0;
+}
+
+//SWITCHS ANIDADOS
+//PRUEBA SWITCH
+int main () {
+
+   char grade = 'B';
+   char grade2 = 'B';
+
+   switch(grade) {
+      case 'A' :
+         printf("Excellent!\n" );
+	   switch(grade2) {
+      		case 'A' :
+         		printf("Dos seguidas\n" );
+         		break;
+      		case 'B' :
+        		printf("sigues bien!\n" );
+         		break;
+      		case 'C' :
+         		printf("algo te paso\n" );
+         		break;
+      		case 'D' :
+         		printf("casi pierdes ahora\n" );
+         		break;
+      		case 'F' :
+         		printf("todo lo contrario\n" );
+         		break;
+      		default :
+         		printf("Invalid gradeb\n" );
+   		}
+         break;
+      case 'B' :
+         printf("Almost!\n" );
+         break;
+      case 'C' :
+         printf("Well done\n" );
+         break;
+      case 'D' :
+         printf("You passed\n" );
+         break;
+      case 'F' :
+         printf("Better try again\n" );
+         break;
+      default :
+         printf("Invalid grade\n" );
+   }
+   
+   printf("Your grade is  %c\n", grade );
+ 
+   return 0;
+}

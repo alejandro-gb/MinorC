@@ -56,17 +56,6 @@ int hofstaderMasculino(int n)
 	}
 }
 
-int ackermann(int m, int n)
-{
-	if (m == 0) {
-		return (n + 1);
-	} else if (m > 0 && n == 0) {
-		return ackermann(m - 1, 1);
-	} else {
-		return ackermann(m - 1, ackermann(m, n - 1));
-	}
-}
-
 int main()
 {
 	printf("Ejecutando factorial de un numero\n");
@@ -99,13 +88,6 @@ int main()
 
 	printf("Ejecutando Hofstadter femenino\n");
 	if (7 == hofstaderFemenina(15)) {
-		printf("---> Done.\n");
-	} else {
-		printf("---> RIP.\n");
-	}
-
-	printf("Ejecutando Ackermann\n");
-	if (9 == ackermann(2, 3)) {
 		printf("---> Done.\n");
 	} else {
 		printf("---> RIP.\n");
