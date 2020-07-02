@@ -1,133 +1,69 @@
 main:
 $s0 = array();
+$s1 = array();
 $sp = -1;
 $ra = -1;
-$t0 = array();
-$t1 = array();
-$t0[0][0]['nombre'] = 'Luis';
-$t0[0][0]['apellido'] = 'Espino';
-$t0[0][0]['sexo'] = 'm';
-$t0[0][0]['telefono'] = 54682145;
-$t0[0][0]['edad'] = 40;
-$t0[1][0]['nombre'] = 'Juan';
-$t0[1][0]['apellido'] = 'Maeda';
-$t0[1][0]['sexo'] = 'm';
-$t0[1][0]['telefono'] = 34586245;
-$t0[1][0]['edad'] = 24;
-$t0[2][0]['nombre'] = 'Pavel';
-$t0[2][0]['apellido'] = 'Vasquez';
-$t0[2][0]['sexo'] = 'm';
-$t0[2][0]['telefono'] = 95862451;
-$t0[2][0]['edad'] = 23;
-$t0[3][0]['nombre'] = 'Maria';
-$t0[3][0]['apellido'] = 'Ramirez';
-$t0[3][0]['sexo'] = 'f';
-$t0[3][0]['telefono'] = 56145233;
-$t0[3][0]['edad'] = 30;
-$t0[4][0]['nombre'] = 'Pablo';
-$t0[4][0]['apellido'] = 'Escobar';
-$t0[4][0]['sexo'] = 'm';
-$t0[4][0]['telefono'] = 85462592;
-$t0[4][0]['edad'] = 60;
-$t2 = 0;
-for0:
-$t3 = $t2 < 5;
-if($t3) goto for0V;
-goto for0F;
-for0A:
-$t2 = $t2 + 1;
-goto for0;
-for0V:
-$t4 = $t2 + 1;
-print('Datos del contacto numero :');
+print('Ejecutando potencia');
 print("\n");
-print($t4);
+$ra = $ra + 1;
+$s0[$ra] = 0;
+$a0 = 2.0;
+$sp = $sp + 1;
+$s1[$sp] = $a0;
+$a1 = 6.0;
+$sp = $sp + 1;
+$s1[$sp] = $a1;
+goto potencia;
+ra0:
+$a0= $s1[$sp];
+$a1= $s1[$sp];
+$t0 = 64 == $v0;
+if(!$t0) goto if0F;
+print('---> Done.');
 print("\n");
-
-print('    Nombre: ');
+goto if0end;
+if0F:
+print('---> RIP.');
 print("\n");
-print($t0[$t2][0]['nombre']);
-print("\n");
-
-print('    Apellido: ');
-print("\n");
-print($t0[$t2][0]['apellido']);
-print("\n");
-
-print('    Sexo: ');
-print("\n");
-print($t0[$t2][0]['sexo']);
-print("\n");
-
-print('    Telefono: ');
-print("\n");
-print($t0[$t2][0]['telefono']);
-print("\n");
-
-print('    Edad: ');
-print("\n");
-print($t0[$t2][0]['edad']);
-print("\n");
-
-goto for0A;
-for0F:
-print('------------------------------');
-print("\n");
-$t5=array();
-$t5[0][0] = 0;
-$t5[0][1] = 1;
-$t5[0][2] = 2;
-$t5[0][3] = 3;
-$t5[0][4] = 4;
-$t5[1][0] = 5;
-$t5[1][1] = 6;
-$t5[1][2] = 7;
-$t5[1][3] = 8;
-$t5[1][4] = 9;
-$t5[2][0] = 10;
-$t5[2][1] = 11;
-$t5[2][2] = 12;
-$t5[2][3] = 13;
-$t5[2][4] = 14;
-$t5[3][0] = 15;
-$t5[3][1] = 16;
-$t5[3][2] = 17;
-$t5[3][3] = 18;
-$t5[3][4] = 19;
-$t5[4][0] = 20;
-$t5[4][1] = 21;
-$t5[4][2] = 22;
-$t5[4][3] = 23;
-$t5[4][4] = 24;
-$t6 = 0;
-for1:
-$t7 = $t6 < 5;
-if($t7) goto for1V;
-goto for1F;
-for1A:
-$t6 = $t6 + 1;
-goto for1;
-for1V:
-$t8 = 0;
-for2:
-$t9 = $t8 < 5;
-if($t9) goto for2V;
-goto for2F;
-for2A:
-$t8 = $t8 + 1;
-goto for2;
-for2V:
-print('Posicion [][] = ');
-print("\n");
-print($t6);
-print("\n");
-print($t8);
-print("\n");
-print($t5[$t6][$t8]);
-print("\n");
-
-goto for2A;
-for2F:
-goto for1A;
-for1F:
+if0end:
 exit;
+
+potencia:
+$t1 = $a1 == 0;
+if(!$t1) goto if1F;
+$v0 = 1;
+goto regresos;
+goto if1end;
+if1F:
+if1end:
+$ra = $ra + 1;
+$s0[$ra] = 1;
+$a0 = $a0;
+$sp = $sp + 1;
+$s1[$sp] = $a0;
+$t2 = $a1 - 1;
+$a1 = $t2;
+$sp = $sp + 1;
+$s1[$sp] = $a1;
+goto potencia;
+ra1:
+$sp = $sp - 1;
+$a0= $s1[$sp];
+$a1= $s1[$sp];
+$t3 = $a0 * $v0;
+$v0 = $t3;
+goto regresos;
+$t4 =  -100;
+$v0 = $t4;
+goto regresos;
+goto regresos;
+
+
+regresos:
+if($s0[$ra] == 1) goto pop;
+if($s0[$ra] == 0) goto pop;
+pop:
+$s2 = $s0[$ra];
+$ra = $ra - 1;
+if($s2 == 1) goto ra1;
+if($s2 == 0) goto ra0;

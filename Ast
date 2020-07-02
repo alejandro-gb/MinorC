@@ -10,66 +10,114 @@ digraph AST {
 	"1p" -> "1ph1"
 	"1p" -> "1ph2"
 	"1p" -> "1ph3"
-	"2p" [label=Declaracion]
+	"2p" [label=Printf]
 	"1ph3" -> "2p"
-	"2ph1" [label=int]
-	"2ph2" [label=ListaNombres]
+	"2ph1" [label=ListaValores]
 	"2p" -> "2ph1"
-	"2p" -> "2ph2"
-	"3p" [label=Variable]
-	"2ph2" -> "3p"
-	"3ph1" [label=var]
-	"3p" -> "3ph1"
-	"4p" [label=Declaracion]
+	"3p" [label="Ejecutando potencia"]
+	"2ph1" -> "3p"
+	"4p" [label=If]
 	"1ph3" -> "4p"
-	"4ph1" [label=int]
-	"4ph2" [label=ListaNombres]
+	"4ph1" [label=condicion]
+	"4ph2" [label=instrucciones]
+	"4ph3" [label=listaelse]
 	"4p" -> "4ph1"
 	"4p" -> "4ph2"
-	"5p" [label=Variable]
-	"4ph2" -> "5p"
-	"5ph1" [label=var2]
-	"5p" -> "5ph1"
-	"6p" [label=If]
-	"1ph3" -> "6p"
-	"6ph1" [label=condicion]
-	"6ph2" [label=instrucciones]
-	"6ph3" [label=listaelse]
-	"6p" -> "6ph1"
-	"6p" -> "6ph2"
-	"6p" -> "6ph3"
-	"8p" [label=var]
-	"7p1" -> "8p"
-	"9p" [label=var2]
-	"7p3" -> "9p"
-	"7p1" [label="$t0"]
-	"7p3" [label="$t1"]
-	"6ph1" -> "7p1"
-	"6ph1" -> "7p2"
-	"6ph1" -> "7p3"
-	"7p2" [label="<"]
-	"10p" [label=Printf]
-	"6ph2" -> "10p"
-	"10ph1" [label=ListaValores]
-	"10p" -> "10ph1"
-	"11p" [label=si]
-	"10ph1" -> "11p"
-	"6pelse" [label=Else]
-	"6ph3" -> "6pelse"
-	"12p" [label=Printf]
-	"6pelse" -> "12p"
-	"12ph1" [label=ListaValores]
-	"12p" -> "12ph1"
-	"13p" [label=no]
-	"12ph1" -> "13p"
-	"14p" [label=Printf]
-	"1ph3" -> "14p"
-	"14ph1" [label=ListaValores]
+	"4p" -> "4ph3"
+	"6p" [label=Llamada]
+	"5p3" -> "6p"
+	"6p1" [label=potencia]
+	"6p2" [label=ListaParamtros]
+	"6p" -> "6p1"
+	"6p" -> "6p2"
+	"5p1" [label=64]
+	"5p3" [label="$v0"]
+	"4ph1" -> "5p1"
+	"4ph1" -> "5p2"
+	"4ph1" -> "5p3"
+	"5p2" [label="=="]
+	"7p" [label=Printf]
+	"4ph2" -> "7p"
+	"7ph1" [label=ListaValores]
+	"7p" -> "7ph1"
+	"8p" [label="---> Done."]
+	"7ph1" -> "8p"
+	"4pelse" [label=Else]
+	"4ph3" -> "4pelse"
+	"9p" [label=Printf]
+	"4pelse" -> "9p"
+	"9ph1" [label=ListaValores]
+	"9p" -> "9ph1"
+	"10p" [label="---> RIP."]
+	"9ph1" -> "10p"
+	"11p" [label=Funcion]
+	instrucciones -> "11p"
+	"11ph1" [label=double]
+	"11ph2" [label=potencia]
+	"11ph3" [label=parametros]
+	"11ph4" [label=instrucciones]
+	"11p" -> "11ph1"
+	"11p" -> "11ph2"
+	"11p" -> "11ph3"
+	"11p" -> "11ph4"
+	"12param" [label=base]
+	"11ph3" -> "12param"
+	"13param" [label=exp]
+	"11ph3" -> "13param"
+	"14p" [label=If]
+	"11ph4" -> "14p"
+	"14ph1" [label=condicion]
+	"14ph2" [label=instrucciones]
+	"14ph3" [label=listaelse]
 	"14p" -> "14ph1"
-	"15p" [label=Fin]
-	"14ph1" -> "15p"
-	"16p" [label=Return]
-	"1ph3" -> "16p"
-	"16ph1" [label=Expresion]
-	"16p" -> "16ph1"
+	"14p" -> "14ph2"
+	"14p" -> "14ph3"
+	"16p" [label=exp]
+	"15p1" -> "16p"
+	"15p1" [label="$a1"]
+	"15p3" [label=0]
+	"14ph1" -> "15p1"
+	"14ph1" -> "15p2"
+	"14ph1" -> "15p3"
+	"15p2" [label="=="]
+	"17p" [label=Return]
+	"14ph2" -> "17p"
+	"17ph1" [label=Expresion]
+	"17p" -> "17ph1"
+	"18p" [label=Return]
+	"11ph4" -> "18p"
+	"18ph1" [label=Expresion]
+	"18p" -> "18ph1"
+	"20p" [label=base]
+	"19p1" -> "20p"
+	"21p" [label=Llamada]
+	"19p3" -> "21p"
+	"21p1" [label=potencia]
+	"21p2" [label=ListaParamtros]
+	"21p" -> "21p1"
+	"21p" -> "21p2"
+	"22p" [label=base]
+	"21p2" -> "22p"
+	"24p" [label=exp]
+	"23p1" -> "24p"
+	"23p1" [label="$a1"]
+	"23p3" [label=1]
+	"21p2" -> "23p1"
+	"21p2" -> "23p2"
+	"21p2" -> "23p3"
+	"23p2" [label="-"]
+	"19p1" [label="$a0"]
+	"19p3" [label="$v0"]
+	"18ph1" -> "19p1"
+	"18ph1" -> "19p2"
+	"18ph1" -> "19p3"
+	"19p2" [label="*"]
+	"25p" [label=Return]
+	"11ph4" -> "25p"
+	"25ph1" [label=Expresion]
+	"25p" -> "25ph1"
+	"26p1" [label="-"]
+	"26p2" [label=100]
+	"25ph1" -> "26p1"
+	"25ph1" -> "26p2"
 }

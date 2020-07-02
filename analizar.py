@@ -540,7 +540,7 @@ def p_goto(t):
 
 def p_soloif(t):
     '''if : IF PARA expresion PARC LLAVEA instrucciones LLAVEC'''
-    addProduccion('ARREGLO --> if ( EXPRESION ) { INSTRUCCIONES }', 'IF.VAL = newIf(EXPRESION.VAL, INSTRUCCIONES.VAL)')
+    addProduccion('IF --> if ( EXPRESION ) { INSTRUCCIONES }', 'IF.VAL = newIf(EXPRESION.VAL, INSTRUCCIONES.VAL)')
     addProduccion('INSTRUCCION --> IF','INSTRUCCION.VAL = IF.VAL')
     t[0] = If(t[3],t[6],t.lexer.lineno)
 
@@ -688,7 +688,6 @@ def p_cast(t):
     addProduccion('EXPRESION --> ( TIPO ) EXPRESION','EXPRESION.VAL = newCasteo(TIPO.VAL, EXPRESION.VAL)')
     t[0] = Casteo(t[2],t[4],t.lexer.lineno)
 
-
 def p_ellamada(t):
     'expresion : IDENTIFICADOR PARA listavalores PARC'
     addProduccion('EXPRESION --> id ( LISTAVALORES )','EXPRESION.VAL = newLlamada(id.lexval, LISTAVALORES.VAL)')
@@ -813,6 +812,6 @@ parser = yacc.yacc()
 
 #METODO PARA HACER EL RECONOCIENTO RECIBE EL TEXTO A RECONOCER
 def parse(input):
-    lexer.lineno = 1
+    lexer.lineno = 0
     parsear = parser.parse(input, lexer = lexer)
     return parsear

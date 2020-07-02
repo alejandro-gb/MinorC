@@ -223,6 +223,7 @@ class Editor:
     stackLoop = []
     stackContinue = []
     returns = []
+    stack2 = []
     namerecursive = ''
     isrecursive = False
     pathFile=''
@@ -356,7 +357,7 @@ class Editor:
         self.ReporteTablaSimbolos()
         self.ReporteErrores()
         self.ReporteOptimizacion()
-        print(self.resultado)
+        #print(self.resultado)
         try:
             f = open("CodigoAugus.txt","w")
             f.write(self.resultado)
@@ -378,6 +379,7 @@ class Editor:
             self.stack.append('global')
             self.concatenar('main:')
             self.concatenar('$s0 = array();')
+            self.concatenar('$s1 = array();')
             self.concatenar('$sp = -1;')
             self.concatenar('$ra = -1;')
             #BUSCAR INSTRUCCIONES GLOBALES
@@ -410,10 +412,10 @@ class Editor:
                     self.concatenar('if($s0[$ra] == '+str(self.returns[r]) + ') goto pop;')
 
                 self.concatenar('pop:')
-                self.concatenar('$s1 = $s0[$ra];')
+                self.concatenar('$s2 = $s0[$ra];')
                 self.concatenar('$ra = $ra - 1;')
                 for r in reversed(range(0,len(self.returns))):
-                    self.concatenar('if($s1 == '+str(self.returns[r]) + ') goto ra'+str(self.returns[r])+';')
+                    self.concatenar('if($s2 == '+str(self.returns[r]) + ') goto ra'+str(self.returns[r])+';')
                                 
         #except:
         #    messagebox.showerror('ERROR','NO SE INTERPRETO')
@@ -481,19 +483,16 @@ class Editor:
                 self.dot.edge(tree + 'h3', nameparam)
                 #-----------AST
                 nums = self.getId()
-                temporal = self.newTemp()
+                #temporal = self.newTemp()
                 val = '$a'+str(nump)
-                simbolo = tablaSimbolos.Simbolo(nums, param[1], temporal, param[0], val, nombre)
+                simbolo = tablaSimbolos.Simbolo(nums, param[1], val, param[0], val, nombre)
                 tabla.newSimbolo(simbolo)
-                self.concatenar(temporal + ' = ' + str(val) + ';')
+                #self.concatenar(temporal + ' = ' + str(val) + ';')
                 nump +=1;
         
         self.InterpretarIns(ins, tabla, nombre, tree + 'h4')
-        #if self.iscall:
-        #    self.concatenar('$ra = $ra - 1;')
         self.concatenar('goto regresos;')
         self.stack.pop()
-        self.iscall = False
 
     def InterpretarCall(self, llamada, tabla, padre):
         nombre = llamada.id
@@ -523,13 +522,14 @@ class Editor:
                 val = str(parametro[1])
                 par = '$a'+str(contparam)
                 self.concatenar(par + ' = ' + val + ';')
+                self.concatenar('$sp = $sp + 1')
+                self.concatenar('$s1[$sp] = ' + par + ';' )
                 contparam += 1
                     
         self.concatenar('goto ' + nombre +';')
         self.concatenar('ra' + str(self.numfunc) + ':')
         self.numfunc += 1
             
-
     #METODO PARA INTERPRETAR UNA FUNCION
     def InterpretarMain(self, funcion, tabla, padre = None):
         ins = funcion.lista
@@ -555,7 +555,7 @@ class Editor:
         self.concatenar('exit;')
         self.stack.pop()
         self.ismain = False
-        self.iscall = False
+        #self.iscall = False
 
     #METODO PARA INTERPRETAR UNA ETIQUETA
     def InterpretarEtiqueta(self,ins,tabla,ambito, padre = None):
@@ -593,16 +593,14 @@ class Editor:
             self.dot.edge(padre, tree)
             self.dot.node(tree + 'h1', 'Expresion')
             self.dot.edge(tree, tree + 'h1')
+            
             #---------AST
-            exp = self.InterpretarOperacion(ret.expresion,tabla,tree + 'h1')
+            
             if(self.ismain == False):
-                tempstack = self.returns.copy()
+                exp = self.InterpretarOperacion(ret.expresion, tabla, tree + 'h1')
                 exptipo = exp[0]
                 expval = str(exp[1])
                 self.concatenar('$v0 = ' + expval +';') 
-                if self.iscall:
-                    self.concatenar('$ra = $ra - 1;')
-                self.iscall = False
                 self.concatenar('goto regresos;')
 
     #METODOD PARA INTERPRETAR UN RETURN
@@ -794,7 +792,7 @@ class Editor:
                         previa = tag+str(scontador-1)
                         self.concatenar(previa+':')
                     scontador += 1
-                    self.concatenar('if(' + expval + ' != ' + resvalor + ') goto ' + namecase + ';')
+                    self.concatenar('if(' + str(expval) + ' != ' + str(resvalor) + ') goto ' + namecase + ';')
                     self.InterpretarIns(cuerpo,tabla,tag,nameast)
                     #if conbreak:
                     #    self.concatenar('goto ' + fin + ';')
@@ -1945,42 +1943,46 @@ class Editor:
             self.concatenar(expval + ' = (' + tipo + ')' + expval + ';')
             return(tipo,expval)
         elif isinstance(operacion, Llamada):
-            id = operacion.id
+            nombre = operacion.id
+            params = operacion.lista
+            funcion = self.BuscarSimbolo(nombre,tabla)
             #---------AST
             numnodo = str(self.inc())
             tree = numnodo + 'p'
             self.dot.node(tree,'Llamada')
             self.dot.edge(padre, tree)
-            self.dot.node(tree + '1', id)
+            self.dot.node(tree + '1', nombre)
             self.dot.node(tree + '2','ListaParamtros')
             self.dot.edge(tree, tree + '1')
             self.dot.edge(tree, tree + '2')
             #---------AST
 
-            self.iscall = True
-            self.numfunc += 1
             self.returns.append(self.numfunc)
-            self.concatenar('$ra = '+str(self.numfunc)+';')
-            
-            if(self.namerecursive == id):
-                self.isrecursive = True
-                self.iscall = False
-            valores = operacion.lista
+            self.concatenar('$ra = $ra + 1;')
+            self.concatenar('$s0[$ra] = '+str(self.numfunc)+';')
+            #TIENE PARAMETROS
+            if(type(params) is list):
+                contparam = 0
+                for param in params:
+                    parametro = self.InterpretarOperacion(param, tabla, tree + '2')
+                    tipo = parametro[0]
+                    val = str(parametro[1])
+                    par = '$a'+str(contparam)
+                    self.concatenar(par + ' = ' + val + ';')
+                    self.concatenar('$sp = $sp + 1;')
+                    self.concatenar('$s1[$sp] = ' + par + ';')
+                    contparam += 1
+                    
+            self.concatenar('goto ' + nombre +';')
+            self.concatenar('ra' + str(self.numfunc) + ':')
+            if(self.ismain == False):
+                self.concatenar('$sp = $sp - 1;')
             contparam = 0
-            for valor in valores:
-                parametro = self.InterpretarOperacion(valor, tabla, tree + '2')
-                tipo = parametro[0]
-                val = str(parametro[1])
-                par = '$a'+str(contparam)
-                self.concatenar(par + ' = ' + val + ';')
+            for param in params:
+                self.concatenar('$a' + str(contparam) + '= $s1[$sp];')
                 contparam += 1
-            
-            self.concatenar('goto ' + id +';')
-            tempstack = self.returns.copy()
-            ra = str(tempstack[-1])
-            self.concatenar('ra'+ra+':')
-            tempstack.pop()
-      
+            self.numfunc += 1
+                
             return('int','$v0')
         elif isinstance(operacion, Referencia):
             #---------AST
@@ -2440,7 +2442,6 @@ class Editor:
         self.stackContinue.clear()
         self.returns.clear()
         self.ismain = True
-        self.iscall = False
         self.arbol = None
         self.i = 0
         self.dot = None
