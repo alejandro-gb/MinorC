@@ -1,4 +1,3 @@
-
 int var1 = 1;
 int punteo = 0;
 

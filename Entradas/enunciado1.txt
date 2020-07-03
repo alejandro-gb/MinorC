@@ -1,0 +1,85 @@
+int main()
+{
+	char op;
+	double a, b;
+	printf("Ingrese el operador +,-,*,/");
+	scanf("%c",&op);
+	printf("Ingrese dos numeros");
+	scanf("%f %f",&a,&b);
+	switch(op)
+	{
+	case '+':
+		printf("%f  + %f = %f\n",a,b,a+b);
+		break;
+	case '-':
+		printf("%f  - %f = %f\n",a,b,a-b);
+		break;
+	case '*':
+		printf("%f  * %f = %f\n",a,b,a*b);
+		break;
+	case '/':
+		printf("%f  / %f = %f\n",a,b,a/b);
+		break;
+	default:
+		printf("Error de operador");
+	}
+	return 0;
+}
+
+
+int main()
+{
+	int num;
+	do
+	{
+		printf("Ingrese un numero entero [0 fin]: ");
+		scanf("%d", &num);
+		if(num % 2 == 0)
+		{
+			printf("El numero es par %d",num);
+		}else
+		{
+			printf("El numero es impar %d",num);
+		}
+	}while(num != 0);
+	return 0;
+}
+
+
+int main()
+{
+    for(int i = 0;i < 10; i++)
+    {
+        if(i == 5)
+        {
+            break;
+        }
+        printf("%d ", i);
+    }
+    printf("\n");
+    for(int j = 0; j < 10; j++)
+    {
+        if(j == 5)
+        {
+            continue;
+        }
+        printf("%d ", j);
+    }
+    printf("\n");
+}
+
+struct punto
+{
+	int x,y;
+};
+
+int main()
+{
+	struct punto lista[2];
+	lista[0].x = 0;
+	lista[0].y = 0;
+	lista[1].x = 1;
+	lista[1].y = 1;
+	printf("%d %d\n", lista[0].x,lista[0].y);
+	printf("%d %d\n", lista[1].x,lista[1].y);
+}

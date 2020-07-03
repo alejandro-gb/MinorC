@@ -111,6 +111,13 @@ class Printf(Instruccion):
     def __init__(self, listavalores,linea):
         self.listavalores = listavalores
         self.linea = linea
+
+#CLASE QUE MANEJA UN SCANF COMO C
+class IScanf(Instruccion):
+    #CONSTRUCTOR RECIBE LA LISTA DE VALORES Y LA LINEA
+    def __init__(self, listavalores, linea):
+        self.listavalores = listavalores
+        self.linea = linea
         
 #CLASE QUE MANEJA LOS IFS 
 class If(Instruccion):

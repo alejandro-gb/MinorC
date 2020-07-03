@@ -1,0 +1,17 @@
+//PRUEBA FOR
+int main(){
+	int var = 6/2*3;
+	int var2 = 4-2;
+	int var3 = var*var2;
+	int var4 = 2+5;
+	int var5 = var*var2;
+	int var6 = var5+var4;
+}
+
+int main()
+{
+
+	int var = 5;
+	var = var + 0;
+	printf("%d",var);
+}

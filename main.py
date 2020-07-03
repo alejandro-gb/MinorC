@@ -219,6 +219,7 @@ class Editor:
     numfunc = 0
     ismain = True
     iscall = False
+    listaAugus = []
     stack = []
     stackLoop = []
     stackContinue = []
@@ -234,6 +235,11 @@ class Editor:
     arbol = None
     dot = None
     i = 0
+    resultadook = ''
+    numbloques = 1
+    lineasantes = -1
+    lineasdespues = 0
+    totallineas = 0
 
     #CONSTRUCTOR
     def __init__(self,principal):
@@ -356,11 +362,27 @@ class Editor:
         self.Interpretar(self.instrucciones, self.tablaGlobal)
         self.ReporteTablaSimbolos()
         self.ReporteErrores()
+        self.totallineas = len(self.listaAugus)
+        while(self.lineasantes != self.lineasdespues):
+            self.lineasantes = len(self.listaAugus)
+            self.OptimizarCodigo()
+            for x in self.listaAugus:
+                if(len(x)==0):
+                    self.listaAugus.remove(x)
+            self.lineasdespues = len(self.listaAugus)
+            
+        self.codigoOptimizado()
         self.ReporteOptimizacion()
         #print(self.resultado)
         try:
             f = open("CodigoAugus.txt","w")
             f.write(self.resultado)
+            f.close
+        except:
+            print("Error al escribir en el archivo")
+        try:
+            f = open("CodigoOptimizado.txt","w")
+            f.write(self.resultadook)
             f.close
         except:
             print("Error al escribir en el archivo")
@@ -378,10 +400,15 @@ class Editor:
 
             self.stack.append('global')
             self.concatenar('main:')
+            self.listaAugus.append(('etiqueta','main:'))
             self.concatenar('$s0 = array();')
+            self.listaAugus.append(('asignacion','$s0',' = ','array()',';'))
             self.concatenar('$s1 = array();')
+            self.listaAugus.append(('asignacion','$s1',' = ','array()',';'))
             self.concatenar('$sp = -1;')
+            self.listaAugus.append(('asignacion','$sp',' = ','-1',';'))
             self.concatenar('$ra = -1;')
+            self.listaAugus.append(('asignacion','$ra',' = ','-1',';'))
             #BUSCAR INSTRUCCIONES GLOBALES
             for x in instrucciones:
                 if   isinstance(x, Declaracion) : self.InterpretarDeclaracion(x, tabla, 'global','instrucciones')
@@ -391,6 +418,7 @@ class Editor:
                 elif isinstance(x, Etiqueta) : self.InterpretarEtiqueta(x, tabla, 'global','instrucciones')
                 elif isinstance(x, Goto) : self.InterpretarGoto(x, tabla, 'global','instrucciones')
                 elif isinstance(x, Struct) : self.InterpretarStruct(x, tabla, 'global','instrucciones')
+                elif isinstance(x, IScanf) : self.InterpretarScan(x, tabla, 'global', 'instrucciones')
             
             #BUSCAR EL MAIN
             for x in instrucciones:
@@ -402,20 +430,26 @@ class Editor:
             #BUSCAR LAS DEMAS FUNCIONES
             for x in instrucciones:
                 if isinstance(x,Funcion) :  
-                    self.concatenar('')
+                    #self.concatenar('')
                     self.InterpretarFuncion(x, tabla,'instrucciones')
             
             if self.returns:
-                self.concatenar('\n')
-                self.concatenar('regresos:')
+                #self.concatenar('\n')
+                self.concatenar('saltos:')
+                self.listaAugus.append(('etiqueta','saltos:'))
                 for r in reversed(range(0,len(self.returns))):
                     self.concatenar('if($s0[$ra] == '+str(self.returns[r]) + ') goto pop;')
+                    self.listaAugus.append(('if','if(','$s0[$ra]',' == ',str(self.returns[r]),') goto ','pop',';'))
 
                 self.concatenar('pop:')
+                self.listaAugus.append(('etiqueta','pop:'))
                 self.concatenar('$s2 = $s0[$ra];')
+                self.listaAugus.append(('asignacion','$s2',' = ','$s0[$ra]',';'))
                 self.concatenar('$ra = $ra - 1;')
+                self.listaAugus.append(('operacion','$ra',' = ','$ra',' - ','1',';'))
                 for r in reversed(range(0,len(self.returns))):
                     self.concatenar('if($s2 == '+str(self.returns[r]) + ') goto ra'+str(self.returns[r])+';')
+                    self.listaAugus.append(('if','if(','$s2',' == ',str(self.returns[r]),') goto ','ra'+str(self.returns[r]),';'))
                                 
         #except:
         #    messagebox.showerror('ERROR','NO SE INTERPRETO')
@@ -442,8 +476,8 @@ class Editor:
             elif isinstance(x, NewStruct)    : self.InterpretarNewStruct(x, tabla, nombre, padre)
             elif isinstance(x, ToStruct)     : self.InterpretarToStruct(x, tabla, nombre, padre)
             elif isinstance(x, Call)         : self.InterpretarCall(x, tabla, padre)
+            elif isinstance(x, IScanf)       : self.InterpretarScan(x, tabla, nombre, padre)
             elif isinstance(x, Funcion)      : self.errorSemantico('CORE_DUMPED',x.linea,'No se pueden hacer funciones anidadas')
-            else: print("None")
             
     #METODO PARA INTERPRETAR UNA FUNCION
     def InterpretarFuncion(self, funcion, tabla, padre = None):
@@ -472,6 +506,7 @@ class Editor:
         tabla.newSimbolo(simbolo)
         self.stack.append(nombre)
         self.concatenar(nombre + ':')
+        self.listaAugus.append(('etiqueta',nombre + ':'))
         self.namerecursive = nombre
         nump = 0
         if params:
@@ -491,9 +526,11 @@ class Editor:
                 nump +=1;
         
         self.InterpretarIns(ins, tabla, nombre, tree + 'h4')
-        self.concatenar('goto regresos;')
+        self.concatenar('goto saltos;')
+        self.listaAugus.append(('salto','goto ','saltos',';'))
         self.stack.pop()
 
+    #METODO PARA INTERPRETAR UNA LLAMADA A FUNCION
     def InterpretarCall(self, llamada, tabla, padre):
         nombre = llamada.id
         params = llamada.listaparam
@@ -512,7 +549,9 @@ class Editor:
 
         self.returns.append(self.numfunc)
         self.concatenar('$ra = $ra + 1;')
+        self.listaAugus.append(('operacion','$ra',' = ','$ra',' + ','1',';'))
         self.concatenar('$s0[$ra] = '+str(self.numfunc)+';')
+        self.listaAugus.append(('asignacion','$s0[$ra]',' = ',str(self.numfunc),';'))
         #TIENE PARAMETROS
         if(type(params) is list):
             contparam = 0
@@ -522,12 +561,17 @@ class Editor:
                 val = str(parametro[1])
                 par = '$a'+str(contparam)
                 self.concatenar(par + ' = ' + val + ';')
-                self.concatenar('$sp = $sp + 1')
+                self.listaAugus.append(('asignacion',par,' = ',val,';'))
+                self.concatenar('$sp = $sp + 1;')
+                self.listaAugus.append(('operacion','$sp',' = ','$sp',' + ','1',';'))
                 self.concatenar('$s1[$sp] = ' + par + ';' )
+                self.listaAugus.append(('asignacion','$s1[$sp]',' = ',par,';'))
                 contparam += 1
                     
         self.concatenar('goto ' + nombre +';')
+        self.listaAugus.append(('salto','goto ',nombre,';'))
         self.concatenar('ra' + str(self.numfunc) + ':')
+        self.listaAugus.append(('etiqueta','ra' + str(self.numfunc) + ':'))
         self.numfunc += 1
             
     #METODO PARA INTERPRETAR UNA FUNCION
@@ -553,6 +597,7 @@ class Editor:
         self.stack.append('main')
         self.InterpretarIns(ins,tabla,'main', tree + 'h3')
         self.concatenar('exit;')
+        self.listaAugus.append(('salida','exit;'))
         self.stack.pop()
         self.ismain = False
         #self.iscall = False
@@ -569,6 +614,8 @@ class Editor:
         self.dot.edge(tree, tree + 'h1')
         #---------AST
         self.concatenar(nomTag + ':')
+        self.listaAugus.append(('etiqueta',nomTag + ':'))
+
 
     #METODO PARA INTERPRETAR UN SALTO GOTO
     def InterpretarGoto(self,ins,tabla,ambito, padre = None):
@@ -581,7 +628,8 @@ class Editor:
         self.dot.node(tree + 'h1', nomTag)
         self.dot.edge(tree, tree + 'h1')
         #---------AST
-        self.concatenar('goto '+nomTag + ';')
+        self.concatenar('goto ' + nomTag + ';')
+        self.listaAugus.append(('salto','goto ',nomTag,';'))
 
     #METODOD PARA INTERPRETAR UN RETURN
     def InterpretarReturn(self, ret, tabla, padre = None):
@@ -600,8 +648,10 @@ class Editor:
                 exp = self.InterpretarOperacion(ret.expresion, tabla, tree + 'h1')
                 exptipo = exp[0]
                 expval = str(exp[1])
-                self.concatenar('$v0 = ' + expval +';') 
-                self.concatenar('goto regresos;')
+                self.concatenar('$v0 = ' + expval +';')
+                self.listaAugus.append(('asignacion','$v0',' = ',expval,';'))
+                self.concatenar('goto saltos;')
+                self.listaAugus.append(('salto','goto ','saltos',';'))
 
     #METODOD PARA INTERPRETAR UN RETURN
     def InterpretarBreak(self,ret,tabla, padre = None):
@@ -613,6 +663,8 @@ class Editor:
         self.dot.edge(padre, tree)
         #---------AST
         self.concatenar('goto ' + fin + ';')
+        self.listaAugus.append(('salto','goto ',fin,';'))
+
 
     #METODOD PARA INTERPRETAR UN RETURN
     def InterpretarContinue(self,ret,tabla, padre = None):
@@ -624,6 +676,7 @@ class Editor:
         #---------AST
         inicio = self.stackContinue[-1]
         self.concatenar('goto ' + inicio + ';')
+        self.listaAugus.append(('salto','goto ',inicio,';'))
 
     #METODO PARA INTERPRETAR UN FOR
     def InterpretarFor(self, ciclo, tabla, ambito, padre = None):
@@ -656,22 +709,32 @@ class Editor:
         self.stackLoop.append(falso)
         self.stackContinue.append(actualizar)
 
+        self.addOpti(2,"Codigo invariante: El valor inicial solo se calcula una vez dentro del bucle",str(ciclo.linea),24)
         if isinstance(inicio, Declaracion):
             self.InterpretarDeclaracion(inicio,tabla,nombre,tree + 'h1')
         elif isinstance(inicio, asignacion):
             self.InterpretarAsignacion(inicio,tabla,tree + 'h1')
         self.concatenar(nombre + ':')
+        self.listaAugus.append(('etiqueta',nombre + ':'))
+        print(condicion)
         resultado = self.InterpretarOperacion(condicion, tabla, tree + 'h2')
         cond = resultado[1]
         self.concatenar('if(' + cond + ')' + ' goto ' + verdadero + ';')
+        self.listaAugus.append(('if','if(',cond,') goto ', verdadero,';'))
         self.concatenar('goto ' + falso + ';')
+        self.listaAugus.append(('salto','goto ',falso,';'))
         self.concatenar(actualizar + ':')
+        self.listaAugus.append(('etiqueta',actualizar + ':'))
         self.InterpretarOperacion(cambio, tabla, tree + 'h3')
         self.concatenar('goto '+ nombre +';')
+        self.listaAugus.append(('salto','goto ',nombre,';'))
         self.concatenar(verdadero +':')
+        self.listaAugus.append(('etiqueta',verdadero +':'))
         self.InterpretarIns(lista, tabla, nombre, tree + 'h4')
-        self.concatenar('goto '+ actualizar +';')        
+        self.concatenar('goto '+ actualizar +';')
+        self.listaAugus.append(('salto','goto ',actualizar,';'))        
         self.concatenar(falso +':')
+        self.listaAugus.append(('etiqueta',falso + ':'))
         
         self.stack.pop()
         self.stackLoop.pop()
@@ -707,12 +770,13 @@ class Editor:
         resultado = self.InterpretarOperacion(condicion, tabla, tree + 'h1')
         cond = resultado[1]
         self.concatenar('if(!' + cond + ') goto ' + falso + ';')
-        #self.concatenar('goto ' + falso + ';')
-        #self.concatenar(verdadero + ':')
+        self.listaAugus.append(('if','if(!',cond,') goto ', falso,';'))
         self.InterpretarIns(insif, tabla, nombre, tree + 'h2')
         self.concatenar('goto ' + fin + ';')
+        self.listaAugus.append(('salto','goto ',fin,';'))
         self.concatenar(falso + ':')
-        
+        self.listaAugus.append(('etiqueta',falso + ':'))
+
         self.addOpti(1,"Negando la concidion del if se elimina un salto innecesario.",ciclo.linea,3)
         
         if(listaelse is not None):
@@ -733,9 +797,12 @@ class Editor:
                      resultadox = self.InterpretarOperacion(condicionx, tabla, newname)
                      condx = resultadox[1]
                      self.concatenar('if(!' + condx + ') goto ' + falsox + ';')
+                     self.listaAugus.append(('if','if(!',cond,') goto ', falsox,';'))
                      self.InterpretarIns(listax, tabla, nombre, newname)
                      self.concatenar('goto ' + fin + ';')
+                     self.listaAugus.append(('salto','goto ',fin,';'))
                      self.concatenar(falsox + ':')
+                     self.listaAugus.append(('etiqueta',falsox + ':'))
                  else:
                     #------------AST
                     self.dot.node(tree + 'else', 'Else')
@@ -744,6 +811,7 @@ class Editor:
                     self.InterpretarIns(x, tabla, nombre, tree + 'else')
                     
         self.concatenar(fin + ':')
+        self.listaAugus.append(('etiqueta',fin + ':'))
         self.stack.pop()
 
     #METODO PARA INTERPRETAR LOS SWITCHS
@@ -791,11 +859,11 @@ class Editor:
                     if(scontador != 0):
                         previa = tag+str(scontador-1)
                         self.concatenar(previa+':')
+                        self.listaAugus.append(('etiqueta',previa+':'))
                     scontador += 1
                     self.concatenar('if(' + str(expval) + ' != ' + str(resvalor) + ') goto ' + namecase + ';')
+                    self.listaAugus.append(('if','if(',str(expval),' != ',str(resvalor),') goto ',namecase,';'))
                     self.InterpretarIns(cuerpo,tabla,tag,nameast)
-                    #if conbreak:
-                    #    self.concatenar('goto ' + fin + ';')
                 else:
                     self.errorSemantico('TYPE_ERROR',ciclo.linea,'El tipo a evaluar debe ser igual que evaluado')
             #DEFAULT
@@ -809,11 +877,14 @@ class Editor:
                 haydef = True
                 tagdef = tag + str(scontador-1)
                 self.concatenar(tagdef + ':')
+                self.listaAugus.append(('etiqueta',tagdef + ':'))
                 self.InterpretarIns(caso,tabla,tag,namedefast)
         if not haydef:
             self.concatenar(tag+str(scontador-1)+':')
+            self.listaAugus.append(('etiqueta',tag+str(scontador-1)+':'))            
         self.concatenar(fin + ':')
-        
+        self.listaAugus.append(('etiqueta',fin+':'))            
+
         self.stack.pop()
         self.stackLoop.pop()
 
@@ -839,11 +910,16 @@ class Editor:
         self.stackContinue.append(regreso)
 
         self.concatenar(regreso + ':')
+        self.listaAugus.append(('etiqueta',regreso+':'))            
+
         self.InterpretarIns(ins,tabla,regreso,tree + 'h2')
         resultado = self.InterpretarOperacion(condicion, tabla, tree + 'h1')
         cond = resultado[1]
         self.concatenar('if(' + cond + ')' + ' goto ' + regreso + ';')
+        self.listaAugus.append(('if','if(',cond,') goto ', regreso,';'))
         self.concatenar(falso + ':')
+        self.listaAugus.append(('etiqueta',falso+':'))            
+
         
         self.stack.pop()
         self.stackLoop.pop()
@@ -874,14 +950,20 @@ class Editor:
         self.stackContinue.append(regreso)
 
         self.concatenar(regreso+':')
+        self.listaAugus.append(('etiqueta',regreso+':'))
         resultado = self.InterpretarOperacion(condicion,tabla,tree + 'h1')
         cond = resultado[1]
         self.concatenar('if(' + cond + ')' + ' goto ' + verdadero + ';')
+        self.listaAugus.append(('if','if(',cond,') goto ', verdadero,';'))
         self.concatenar('goto ' + falso + ';')
+        self.listaAugus.append(('salto','goto ',falso,';'))
         self.concatenar(verdadero + ':')
+        self.listaAugus.append(('etiqueta',verdadero+':'))
         self.InterpretarIns(ins,tabla,regreso,tree + 'h2')
         self.concatenar('goto ' + regreso + ';')
+        self.listaAugus.append(('salto','goto ',regreso,';'))
         self.concatenar(falso + ':')
+        self.listaAugus.append(('etiqueta',falso+':'))
         
         self.stack.pop()
         self.stackLoop.pop()
@@ -939,14 +1021,62 @@ class Editor:
             tprint = 'print(\'' + str(newval) + '\');'
             if(str(newval) != ''):
                 self.concatenar(tprint)
+                self.listaAugus.append(('print',tprint))
                 self.concatenar('print("\\n");')
+                self.listaAugus.append(('print','print("\\n");'))
             if(toconcat != ''):
                 self.concatenar(toconcat)
+                self.listaAugus.append(('print',toconcat))
         except IndexError:
             self.errorSemantico('INDEX_ERROR',ins.linea,'Se intenta imprimir fuera de rango')
         except:
             self.errorSemantico('NONETYPE_ERROR',ins.linea,'Se intenta imprimir un valor que no existe')
      
+    #METODO PARA INTERPRETAR UN SCANF COMO EN C
+    def InterpretarScan(self, ins, tabla, ambito, padre = None):
+        lista = ins.listavalores
+        #---------AST
+        numnodo = str(self.inc())
+        tree = numnodo + 'p'
+        self.dot.node(tree,'Scanf')
+        self.dot.edge(padre,tree)
+        self.dot.node(tree + 'h1','ListaValores')
+        self.dot.edge(tree,tree + 'h1')
+        #---------AST
+        forma = self.InterpretarOperacion(lista[0],tabla,tree + 'h1')
+        newtipo = forma[0]
+        newval = forma[1]
+        if(('%' in newval) == False):
+            self.errorSemantico('FORMAT_ERROR',ins.linea,'Se debe definir el formato de lo que se lee')
+            return
+        for i in range(1,len(lista)):
+            resultado = self.InterpretarOperacion(lista[i],tabla,tree + 'h1')
+            restipo = resultado[0]
+            resval = str(resultado[1])
+            if('&' in resval):
+                resval = resval.replace('&','')
+            if((restipo == 'int' or restipo == 'void') and ('%d' in newval or '%i' in newval)):
+                if('%d' in newval):
+                    newval = newval.replace('%d','',1)
+                elif('%i' in newval):
+                    newval = newval.replace('%i','',1)
+                self.concatenar(resval + ' = read();')
+                self.listaAugus.append(('read',resval,' = read();'))
+            elif((restipo == 'float' or restipo == 'double' or restipo == 'void') and '%f' in newval):
+                newval = newval.replace('%f','',1)
+                self.concatenar(resval + ' = read();')
+                self.listaAugus.append(('read',resval,' = read();'))
+            elif((restipo == 'char' or restipo == 'void') and '%c' in newval):
+                newval = newval.replace('%c','',1)
+                self.concatenar(resval + ' = read();')
+                self.listaAugus.append(('read',resval,' = read();'))
+            elif((restipo == 'char*' or restipo == 'void') and '%s' in newval):
+                newval = newval.replace('%s','',1)
+                self.concatenar(resval + ' = read();')
+                self.listaAugus.append(('read',resval,' = read();'))
+            else:
+                self.errorSemantico('FORMAT_ERROR',ins.linea,'El formato para imprimir no concuerda con el tipo de la variable')
+
     #METODO PARA INTERPRETAR UNA DECLARACION
     def InterpretarDeclaracion(self, ins, tabla, ambito, padre = None):
         tipo = ins.tipo.lower()
@@ -984,6 +1114,7 @@ class Editor:
                         simbolo = tablaSimbolos.Simbolo(num, nombre, temporal, tipo, valor, ambito)
                         tabla.newSimbolo(simbolo)
                         self.concatenar(temporal + ' = ' + str(valor) + ';')
+                        self.listaAugus.append(('asignacion',temporal,' = ',str(valor),';'))
                     #IDENTIFICADOR VALOR
                     elif(type(nombre) is tuple):
                         identificador = nombre[0]
@@ -1005,6 +1136,7 @@ class Editor:
                                     simbolo = tablaSimbolos.Simbolo(num, identificador, temporal, tipo, valor, ambito)
                                     tabla.newSimbolo(simbolo)
                                     self.concatenar(temporal + ' = ' + str(valor) + ';')
+                                    self.listaAugus.append(('asignacion',temporal,' = ',str(valor),';'))
                                     return
                                 else:
                                     self.errorSemantico('TYPE_ERROR',ins.linea,'Un caracter nada mas')
@@ -1013,6 +1145,8 @@ class Editor:
                             tabla.newSimbolo(simbolo)
                             if(type(valor) is not bool):
                                 self.concatenar(temporal + ' = ' + str(valor) + ';')
+                                self.listaAugus.append(('asignacion',temporal,' = ',str(valor),';'))
+
                         else:
                             self.errorSemantico('TYPE_ERROR',ins.linea,'El tipo debe ser el mismo')
                 else:
@@ -1038,6 +1172,7 @@ class Editor:
         num = self.getId()
         valor = []
         self.concatenar(temporal + ' = array();')
+        self.listaAugus.append(('asignacion',temporal,' = ','array()',';'))
         for ins in listains:
             #---------AST
             numnew = str(self.inc())
@@ -1096,6 +1231,7 @@ class Editor:
                     for dim in ins.listadim:
                         newtemp = self.newTemp()
                         self.concatenar(newtemp + ' = array();')
+                        self.listaAugus.append(('asignacion',newtemp,' = ','array()',';'))
                         size = self.InterpretarOperacion(dim, tabla, tree+'h2')
                         sizeval = size[1]
                 num = self.getId()
@@ -1138,14 +1274,20 @@ class Editor:
                 if(valtipo == 'char'):
                     valval = "'"+valval+"'"
                 self.concatenar(temp + "[" + str(sim.valor) + "]['"+parte+"'] = " + str(valval) + ';')
+                self.listaAugus.append(('asignacion',temp + "[" + str(sim.valor) + "]['"+parte+"']",' = ',str(valval),';'))
             else:
                 toconcat = temp + "[" + str(sim.valor) + "]['" + parte + "']"
                 for dimension in asig.dimensiones:
                     posicion = self.InterpretarOperacion(dimension,tabla,tree + 'h2')
                     val = posicion[1]
                     toconcat += '[' + str(val) + ']'
-                toconcat += ' = ' + str(valval) + ';'
+                extra = str(resval)
+                extra2 = toconcat
+                toconcat += ' = ' + extra + ';'
+                
                 self.concatenar(toconcat)
+                self.listaAugus.append(('asignacion',extra2,' = ',extra,';'))
+
 
     #METODO PRA INTERPRETAR UNA ASIGNACION
     def InterpretarAsignacion(self, ins, tabla, padre = None):
@@ -1177,27 +1319,38 @@ class Editor:
                             newval = "'" + newval + "'"
                         if(signo == '='):
                             self.concatenar(simbolo.temporal + ' = ' + str(newval) + ';')
+                            self.listaAugus.append(('asignacion',simbolo.temporal,' = ',str(newval),';'))
                             simbolo.valor = newval
                         elif(signo == '+='):
                             self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' + ' + str(newval) + ' ; ')
+                            self.listaAugus.append(('operacion',simbolo.temporal,' = ',simbolo.temporal,' + ',str(newval),';'))
                         elif(signo == '-='):
                             self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' - ' + str(newval) + ' ; ')
+                            self.listaAugus.append(('operacion',simbolo.temporal,' = ',simbolo.temporal,' - ',str(newval),';'))
                         elif(signo == '*='):
                             self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' * ' + str(newval) + ' ; ')
+                            self.listaAugus.append(('operacion',simbolo.temporal,' = ',simbolo.temporal,' * ',str(newval),';'))
                         elif(signo == '/='):
                             self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' / ' + str(newval) + ' ; ')
+                            self.listaAugus.append(('operacion',simbolo.temporal,' = ',simbolo.temporal,' / ',str(newval),';'))
                         elif(signo == '%='):
                             self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' % ' + str(newval) + ' ; ')
+                            self.listaAugus.append(('operacion',simbolo.temporal,' = ',simbolo.temporal,' % ',str(newval),';'))
                         elif(signo == '<<='):
                             self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' << ' + str(newval) + ' ; ')
+                            self.listaAugus.append(('operacion',simbolo.temporal,' = ',simbolo.temporal,' << ',str(newval),';'))
                         elif(signo == '>>='):
                             self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' >> ' + str(newval) + ' ; ')
+                            self.listaAugus.append(('operacion',simbolo.temporal,' = ',simbolo.temporal,' >> ',str(newval),';'))
                         elif(signo == '&='):
                             self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' & ' + str(newval) + ' ; ')
+                            self.listaAugus.append(('operacion',simbolo.temporal,' = ',simbolo.temporal,' & ',str(newval),';'))
                         elif(signo == '|='):
                             self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' | ' + str(newval) + ' ; ')
+                            self.listaAugus.append(('operacion',simbolo.temporal,' = ',simbolo.temporal,' | ',str(newval),';'))
                         elif(signo == '^='):
                             self.concatenar(simbolo.temporal + ' = ' + simbolo.temporal + ' ^ ' + str(newval) + ' ; ')
+                            self.listaAugus.append(('operacion',simbolo.temporal,' = ',simbolo.temporal,' ^ ',str(newval),';'))
                 #ASIGNAR A ARREGLO
                 else:
                     self.dot.node(tree + 'h4','ListaDimensiones')
@@ -1216,6 +1369,7 @@ class Editor:
                                 simbolo.valor.append(newval)
                         expre += ' = ' + str(newval) + ';'
                         self.concatenar(expre)
+                        self.listaAugus.append(('nop',expre))
                     else:
                         self.errorSemantico('INDEX_ERROR',ins.linea,'Index out range (#dimension)')
             else:
@@ -1265,7 +1419,8 @@ class Editor:
                         newval = val[1]
                         dims.append(newval)
                     
-                self.concatenar(temporal + '=' + 'array();')
+                self.concatenar(temporal + ' = ' + 'array();')
+                self.listaAugus.append(('asignacion',temporal,' = ','array()',';'))
                 if(listaval is not None):
                     if(type(listaval) is not list):
                         resultado = self.InterpretarOperacion(listaval,tabla,tree + 'h4')
@@ -1275,8 +1430,10 @@ class Editor:
                         tabla.newSimbolo(simbolo)
                         if('$' in valor):
                             self.concatenar(temporal + ' = ' + valor + ';')
+                            self.listaAugus.append(('asignacion',temporal,' = ',valor,';'))
                         else:    
                             self.concatenar(temporal + ' = ' + "'" + valor + "';")
+                            self.listaAugus.append(('asignacion','$s0',' = ',"'" + valor + "'",';'))
                         return
                     else:
                         for x in range(0,len(listaval)):
@@ -1289,12 +1446,16 @@ class Editor:
                                     if(len(dimensiones) == 1):
                                         if(len(listaval[x]) < dims[0]+1 ):
                                             self.concatenar(temporal + '['+str(y)+'] = '+str(resval)+';')
+                                            self.listaAugus.append(('asignacion',temporal + '['+str(y)+']',' = ',str(resval),';'))
+
                                         else:
                                             self.errorSemantico('INDEX_ERROR',ins.linea,'Exeso de elementos en el inicializador del array')
                                     else:
                                         if(len(listaval) < dims[0]+1):
                                             if(len(listaval[x]) < dims[1]+1):
                                                 self.concatenar(temporal + '['+str(x)+']['+str(y)+'] = '+str(resval)+';')
+                                                self.listaAugus.append(('asignacion',temporal + '['+str(x)+']['+str(y)+']',' = ',str(resval),';'))
+
                                             else:
                                                 self.errorSemantico('INDEX_ERROR',ins.linea,'Exeso de elementos en el inicializador del array')
                                         else:
@@ -1417,6 +1578,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' + ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' + ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1431,6 +1593,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' - ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' - ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1444,6 +1607,7 @@ class Editor:
                     if(var is None):
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' * ' + valor2 + ';'
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' * ',valor2,';'))
                         self.concatenar(temporal)
                         valor1 = temp
                         return (restipo, temp)
@@ -1459,6 +1623,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' / ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' / ',valor2,';'))
                         valor1 = temp
                         return ('double', temp)
                     else:
@@ -1473,6 +1638,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' % ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' % ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1489,6 +1655,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' > ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' > ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1503,6 +1670,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' < ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' < ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1517,6 +1685,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' >= ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' >= ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1531,6 +1700,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' <= ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' <= ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1547,6 +1717,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' == ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' == ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1561,6 +1732,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' != ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' != ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1577,6 +1749,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' && ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' && ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1591,6 +1764,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' || ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' || ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1607,6 +1781,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' & ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' & ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1621,6 +1796,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' | ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' | ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1635,6 +1811,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' ^ ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' ^ ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1649,6 +1826,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' << ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' << ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1663,6 +1841,7 @@ class Editor:
                         temp = self.newTemp()
                         temporal = temp + ' = ' + valor1 + ' >> ' + valor2 + ';'
                         self.concatenar(temporal)
+                        self.listaAugus.append(('operacion',temp,' = ',valor1,' >> ',valor2,';'))
                         valor1 = temp
                         return (restipo, temp)
                     else:
@@ -1736,7 +1915,8 @@ class Editor:
             exp = self.InterpretarOperacion(operacion.exp,tabla,tree + '2')
             newtipo = exp[0]
             temp = self.newTemp()
-            self.concatenar(temp + ' =  -' + str(exp[1]) + ';')
+            self.concatenar(temp + ' = -' + str(exp[1]) + ';')
+            self.listaAugus.append(('unaria',temp,' = ','-',str(exp[1]),';'))
             newval ='-' + str(exp[1])
 
             self.dot.node(tree + '1','-')
@@ -1753,7 +1933,8 @@ class Editor:
             exp = self.InterpretarOperacion(operacion.exp, tabla, tree + '2')
             newtipo = exp[0]
             temp = self.newTemp()
-            self.concatenar(temp + ' =  ~' + str(exp[1]) + ';')
+            self.concatenar(temp + ' = ~' + str(exp[1]) + ';')
+            self.listaAugus.append(('unaria',temp,' = ','~',str(exp[1]),';'))
             newval = '~'+str(exp[1])
             
             self.dot.node(tree + '1','~')
@@ -1770,7 +1951,8 @@ class Editor:
             exp = self.InterpretarOperacion(operacion.exp, tabla, tree + '2')
             newtipo = exp[0]
             temp = self.newTemp()
-            self.concatenar(temp + ' =  !' + str(exp[1]) + ';')
+            self.concatenar(temp + ' = !' + str(exp[1]) + ';')
+            self.listaAugus.append(('unaria',temp,' = ','!',str(exp[1]),';'))
             newval = '!'+str(exp[1])
             
             self.dot.node(tree + '1','!')
@@ -1817,10 +1999,12 @@ class Editor:
             newtipo = exp[0]
             newval = str(exp[1])
             asignar = newval + ' = ' + newval + ' + 1;'
+            self.listaAugus.append(('operacion',newval,' = ',newval,' + ','1',';'))
             self.concatenar(asignar)
             if var is not None:    
                 newasig = var + ' = ' + newval + ';'
                 self.concatenar(newasig)
+                self.listaAugus.append(('asignacion',var,' = ',newval,';'))
 
             self.dot.node(tree + '1','++')
             self.dot.node(tree + '2',newval)
@@ -1838,9 +2022,11 @@ class Editor:
             newval = str(exp[1])
             asignar = newval + ' = ' + newval + ' - 1;'
             self.concatenar(asignar)
+            self.listaAugus.append(('operacion',newval,' = ',newval,' - ','1',';'))
             if var is not None:    
                 newasig = var + ' = ' + newval + ';'
                 self.concatenar(newasig)
+                self.listaAugus.append(('asignacion',var,' = ',newval,';'))
             
             self.dot.node(tree + '1','--')
             self.dot.node(tree + '2',newval)
@@ -1859,8 +2045,12 @@ class Editor:
             if var is not None:
                 asignar = var + ' = ' + newval + ';'
                 self.concatenar(asignar)
+                self.listaAugus.append(('asignacion',var,' = ',newval,';'))
+
             newasig = newval + ' = ' + newval + ' + 1;'
             self.concatenar(newasig)
+            self.listaAugus.append(('operacion',newval,' = ',newval,' + ','1',';'))
+
             
             self.dot.node(tree + '1',newval)
             self.dot.node(tree + '2','++')
@@ -1879,8 +2069,11 @@ class Editor:
             if var is not None:
                 asignar = var + ' = ' + newval + ';'
                 self.concatenar(asignar)
+                self.listaAugus.append(('asignacion',var,' = ',newval,';'))
             newasig = newval + ' = ' + newval + ' - 1;'
             self.concatenar(newasig)
+            self.listaAugus.append(('operacion',newval,' = ',newval,' - ','1',';'))
+
 
             self.dot.node(tree + '1',newval)
             self.dot.node(tree + '2','--')
@@ -1915,13 +2108,22 @@ class Editor:
             tagF = tag + 'F'
             tagFin = tag + 'E'
             self.concatenar('if(' + condval + ') goto '+ tagV + ';')
+            self.listaAugus.append(('if','if(',condval,') goto ', tagV,';'))
             self.concatenar('goto ' + tagF + ';' )
+            self.listaAugus.append(('salto','goto ',tagF,';'))
             self.concatenar(tagV + ':')
+            self.listaAugus.append(('etiqueta',tagV+':'))
             self.concatenar(var + ' = ' + str(trueval) + ';')
+            self.listaAugus.append(('asignacion',var,' = ',str(trueval),';'))
             self.concatenar('goto ' + tagFin + ';' )
+            self.listaAugus.append(('salto','goto ',tagFin,';'))
             self.concatenar(tagF + ':')
+            self.listaAugus.append(('etiqueta',tagF+':'))
             self.concatenar(var + ' = ' + str(falseval) + ';')
+            self.listaAugus.append(('asignacion',var,' = ',str(falseval),';'))
             self.concatenar(tagFin + ':')
+            self.listaAugus.append(('etiqueta',tagFin+':'))
+
             return(truetipo,True)
         elif isinstance(operacion, Casteo):
             tipo = operacion.tipo
@@ -1941,6 +2143,7 @@ class Editor:
             exptipo = exp[0]
             expval = exp[1]
             self.concatenar(expval + ' = (' + tipo + ')' + expval + ';')
+            self.listaAugus.append(('cast',expval,' = ','('+tipo+')',expval,';'))
             return(tipo,expval)
         elif isinstance(operacion, Llamada):
             nombre = operacion.id
@@ -1959,7 +2162,9 @@ class Editor:
 
             self.returns.append(self.numfunc)
             self.concatenar('$ra = $ra + 1;')
+            self.listaAugus.append(('operacion','$ra',' = ','$ra',' + ','1',';'))
             self.concatenar('$s0[$ra] = '+str(self.numfunc)+';')
+            self.listaAugus.append(('asignacion','$s0[$ra]',' = ',str(self.numfunc),';'))
             #TIENE PARAMETROS
             if(type(params) is list):
                 contparam = 0
@@ -1969,17 +2174,26 @@ class Editor:
                     val = str(parametro[1])
                     par = '$a'+str(contparam)
                     self.concatenar(par + ' = ' + val + ';')
+                    self.listaAugus.append(('asignacion',par,' = ',val,';'))
+
                     self.concatenar('$sp = $sp + 1;')
+                    self.listaAugus.append(('operacion','$sp',' = ','$sp',' + ','1',';'))
                     self.concatenar('$s1[$sp] = ' + par + ';')
+                    self.listaAugus.append(('asignacion','$s1[$sp]',' = ',par,';'))
+
                     contparam += 1
                     
             self.concatenar('goto ' + nombre +';')
+            self.listaAugus.append(('salto','goto ',nombre,';'))
             self.concatenar('ra' + str(self.numfunc) + ':')
+            self.listaAugus.append(('etiqueta','ra' + str(self.numfunc)+':'))
             contparam = 0
             for param in params:
                 if(self.ismain == False):
                     self.concatenar('$sp = $sp - 1;')
-                self.concatenar('$a' + str(contparam) + '= $s1[$sp];')
+                    self.listaAugus.append(('operacion','$sp',' = ','$sp',' - ','1',';'))
+                self.concatenar('$a' + str(contparam) + ' = $s1[$sp];')
+                self.listaAugus.append(('asignacion','$a' + str(contparam),' = ','$s1[$sp]',';'))
                 contparam += 1
             self.numfunc += 1
                 
@@ -2302,8 +2516,12 @@ class Editor:
         </style>
         </head>
         <body>
-        <h2>Reporte de Optimizacion</h2>
-        <table id="t01">
+        <h2>Reporte de Optimizacion</h2>'''
+        tshtml += '<h3>Numero de bloques:  '+str(self.numbloques)+'</h3>'
+        tshtml += '<h3>Numero de lineas antes de optimizar:  '+str(self.totallineas)+'</h3>'
+        tshtml += '<h3>Numero de lineas despues de optimizar:  '+str(self.lineasdespues)+'</h3>'
+        tshtml += '<h3>Lineas ahorradas:  '+str(self.totallineas - self.lineasdespues)+'</h3>'
+        tshtml += '''<table id="t01">
         <tr>
         <th>Id</th>
         <th>Nombre</th>
@@ -2363,6 +2581,137 @@ class Editor:
         num = self.numvar
         self.numvar += 1
         return num
+
+    #METODO PARA OPTIMIZAR
+    def OptimizarCodigo(self):
+        self.numbloques = 1
+        numlineas = len(self.listaAugus)
+        eliminar = []
+        operaciones = []
+        asignaciones = []
+        for x in range(0,numlineas):
+            tupla = self.listaAugus[x]
+            if(len(tupla) != 0):
+                tipo = tupla[0]
+                numsig = x+1
+                if(numsig < numlineas):
+                    siguiente = self.listaAugus[numsig]
+                    if(len(siguiente) != 0):
+                        tiponext = siguiente[0]
+            if(tipo == 'asignacion'):
+                n = tupla[1]
+                val = tupla[3]
+                asig = ((n,val))
+                #if('$t' in val):
+                if(' ' in val):
+                    newop = val.split(' ')
+                    newtupla = ('operacion',n,' = ',newop[0],' ' + newop[1] + ' ',newop[2],';')
+                    self.listaAugus[x] = newtupla
+                    self.listaAugus[x] = newtupla
+            if(tipo == 'operacion'):
+                n = tupla[1]
+                o1 = tupla[3]
+                s = tupla[4]
+                o2 = tupla[5]
+                operacion = (n,o1,s,o2)
+                if(s == ' / '):
+                    if(o2 == '1'):
+                        if(o1 == n):
+                            eliminar.append(x)
+                            self.addOpti(1,"Simplificacion algebraica y por fuerza: (/1)",'A'+str(x),11)
+                        else:
+                            self.addOpti(1,"Simplificacion algebraica y por fuerza: (/1)",'A'+str(x),15)
+                            newtupla = ('asignacion',n,' = ',o1,';')
+                            self.listaAugus[x] = newtupla
+                    if(o1 == '0'):
+                        self.addOpti(1,"Simplificacion algebraica y por fuerza: (0/)",'A'+str(x),18)
+                        newtupla = ('asignacion',n,' = ','0',';')
+                        self.listaAugus[x] = newtupla
+                elif(s == ' * ' ):
+                    if(o1 == '1'):
+                        if(o2 == n):
+                            eliminar.append(x)
+                            self.addOpti(1,"Simplificacion algebraica y por fuerza: (*1)",'A'+str(x),10)
+                        else:
+                            self.addOpti(1,"Simplificacion algebraica y por fuerza: (*1)",'A'+str(x),14)
+                            newtupla = ('asignacion',n,' = ',o2,';')
+                            self.listaAugus[x] = newtupla
+                    if(o2 == '1'):
+                        if(o1 == n):
+                            eliminar.append(x)
+                            self.addOpti(1,"Simplificacion algebraica y por fuerza: (*1)",'A'+str(x),10)
+                        else:
+                            self.addOpti(1,"Simplificacion algebraica y por fuerza: (*1)",'A'+str(x),14)
+                            newtupla = ('asignacion',n,' = ',o1,';')
+                            self.listaAugus[x] = newtupla
+                    if(o1 == '0' or o2 == '0'):
+                        self.addOpti(1,"Simplificacion algebraica y por fuerza: (*0)",'A'+str(x),17)
+                        newtupla = ('asignacion',n,' = ','0',';')
+                        self.listaAugus[x] = newtupla
+                    if(o1 == '2'):
+                        self.addOpti(1,"Simplificacion algebraica y por fuerza: (+ en lugar de *)",'A'+str(x),16)
+                        newtupla = ('operacion',n,' = ',o2,' + ',o2,';')
+                        self.listaAugus[x] = newtupla
+                    if(o2 == '2'):
+                        self.addOpti(1,"Simplificacion algebraica y por fuerza: (+ en lugar de *)",'A'+str(x),16)
+                        newtupla = ('operacion',n,' = ',o1,' + ',o1,';')
+                        self.listaAugus[x] = newtupla
+                elif(s == ' + '):
+                    if(o1 == '0'):
+                        if(o2 == n):
+                            eliminar.append(x)
+                            self.addOpti(1,"Simplificacion algebraica y por fuerza: (+ 0)",'A'+str(x),8)
+                        else:
+                            self.addOpti(1,"Simplificacion algebraica y por fuerza: (+ 0)",'A'+str(x),12)
+                            newtupla = ('asignacion',n,' = ',o2,';')
+                            self.listaAugus[x] = newtupla
+                    if(o2 == '0'):
+                        if(o1 == n):
+                            eliminar.append(x)
+                            self.addOpti(1,"Simplificacion algebraica y por fuerza: (+ 0)",'A'+str(x),8)
+                        else:
+                            self.addOpti(1,"Simplificacion algebraica y por fuerza: (+ 0)",'A'+str(x),12)
+                            newtupla = ('asignacion',n,' = ',o1,';')
+                            self.listaAugus[x] = newtupla
+                elif(s ==' - '):
+                    if(o2 == '0'):
+                        if(o1 == n):
+                            eliminar.append(x)
+                            self.addOpti(1,"Simplificacion algebraica y por fuerza: (- 0)",'A'+str(x),9)
+                        else:
+                            self.addOpti(1,"Simplificacion algebraica y por fuerza: (- 0)",'A'+str(x),13)
+                            newtupla = ('asignacion',n,' = ',o1,';')
+                            self.listaAugus[x] = newtupla
+                operaciones.append(operacion)
+                for op in operaciones:
+                    if(op != operacion):
+                        if(op[1] == operacion[1] and op[2] == operacion[2] and op[3] == operacion[3]):
+                            if('$a' in operacion[1] or ('$v' in operacion[1]) or ('$s' in operacion[1])):
+                                pass
+                            else:
+                                newtupla = ('asignacion',n,' = ',op[0],';')
+                                self.listaAugus[x] = newtupla
+                                self.addOpti(2,"Subexpresion Comun",'A'+str(x),21)
+            if(tipo == 'salto'):
+                self.numbloques += 1
+                if(tiponext != 'etiqueta'):
+                    eliminar.append(numsig)
+                    self.addOpti(2,"Codigo muerto: El codigo despues de un salto incondicional nunca se ejecuta",'A'+str(numsig),20)
+                else:
+                    pass
+                    #print(siguiente)
+        while eliminar:
+            num = eliminar[0]
+            self.listaAugus[num] = ()
+            eliminar.pop(0)
+        
+
+    def codigoOptimizado(self):
+        for x in self.listaAugus:
+            for y in range(1,len(x)):
+                self.resultadook += x[y]
+            if(len(x)!=0):
+                self.resultadook += '\n'
 
     #METODO PARA EJECUTAR EL ANALISIS ASCENDENTE DE AUGUS EN EL INTERPRETE DE AUGUS
     def EjecutarAugus(self, texto):
@@ -2444,7 +2793,13 @@ class Editor:
         self.ismain = True
         self.arbol = None
         self.i = 0
+        self.resultadook = ''
         self.dot = None
+        self.listaAugus.clear()
+        self.numbloques = 1
+        lineasantes = -1
+        lineasdespues = 0
+        totallineas = 0
         try:
             f = open('ReporteGr.html', "w")
             f.write('')

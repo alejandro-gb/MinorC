@@ -254,7 +254,8 @@ def p_instruccion(t):
                    | declastruct
                    | asignastruct
                    | llamada
-                   | comentario'''
+                   | comentario
+                   | soloscanf'''
     t[0] = t[1]
 
 def p_comments(t):
@@ -323,20 +324,16 @@ def p_continue(t):
 
 def p_prinf(t):
     'printf : PRINTF PARA listavalores PARC PUNTOYCOMA'
-    addProduccion('PRINTF --> printf ( LISTAPRINT );','PRINTF.VAL = newPrint(LISTAPRINT.VAL)')
+    addProduccion('PRINTF --> printf ( LISTAVALORES );','PRINTF.VAL = newPrint(LISTAPRINT.VAL)')
     addProduccion('INSTRUCCION --> PRINTF','INSTRUCCION.VAL = PRINTF.VAL')
     t[0] = Printf(t[3],t.lexer.lineno)
 
-#def p_listprint(t):
-#    'listaprint : listaprint COMA expresion'
-#    addProduccion('LISTAPRINT --> LISTAPRINT , EXPRESION ','LISTAPRINT.VAL  = LISTAPRINT1.VAL + EXPRESION.VAL')
-#    t[1].append(t[3])
-#    t[0] = t[1]
+def p_soloscanf(t):
+    'soloscanf : SCANF PARA listavalores PARC PUNTOYCOMA'
+    addProduccion('SCANF --> scanf ( LISTAVALORES );','SCANF.VAL = newScan(LISTAPRINT.VAL)')
+    addProduccion('INSTRUCCION --> SCANF','INSTRUCCION.VAL = SCANF.VAL')
+    t[0] = IScanf(t[3],t.lexer.lineno)
 
-#def p_soloprint(t):
-#    'listaprint : expresion'
-#    addProduccion('LISTAPRINT --> EXPRESION','LISTAPRINT.VAL = EXPRESION.VAL')
-#    t[0] = [t[1]]
 
 def p_funcion(t):
     '''funcion : tipo IDENTIFICADOR PARA opcionfunc LLAVEA instrucciones LLAVEC'''
@@ -386,12 +383,6 @@ def p_arreglo(t):
     addProduccion('INSTRUCCION --> ARREGLO','INSTRUCCION.VAL = ARREGLO.VAL')
     #t[0] = Arreglo(t[1], t[2], t[3], None, t.lexer.lineno)
     t[0] = Arreglo(t[1], t[2], None, None, t.lexer.lineno)
-
-#def p_arregloinicializado(t):
-#    'arreglo : tipo IDENTIFICADOR lista_dimension IGUAL inicializacion PUNTOYCOMA'
-#    addProduccion('ARREGLO --> TIPO id LISTADIMENSION = INICIALIZACION;', 'ARREGLO.VAL = newArreglo(TIPO.VAL, id.lexval, LISTADIMENSION.VAL, INICIALIZACION.VAL)')
-#    addProduccion('INSTRUCCION --> ARREGLO','INSTRUCCION.VAL = ARREGLO.VAL')
-#    t[0] = Arreglo(t[1], t[2], t[3], t[5], t.lexer.lineno)
 
 def p_arraylist(t):
     'arraylist : arraylist COMA unarray'
