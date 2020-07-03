@@ -3,254 +3,42 @@ $s0 = array();
 $s1 = array();
 $sp = -1;
 $ra = -1;
-print('Ejecutando factorial de un numero');
-print("\n");
 $ra = $ra + 1;
 $s0[$ra] = 0;
-$a0 = 12;
+$a0 = 3;
 $sp = $sp + 1;
 $s1[$sp] = $a0;
-goto factorial;
+goto fact;
 ra0:
 $a0 = $s1[$sp];
-$t0 = 479001600 == $v0;
+print($v0);
+print("\n");
+
+exit;
+fact:
+$t0 = $a0 > 1;
 if(!$t0) goto if0F;
-print('---> Done.');
-print("\n");
-goto if0end;
-if0F:
-print('---> Rip.');
-print("\n");
-if0end:
-print('Ejecutando potencia');
-print("\n");
 $ra = $ra + 1;
 $s0[$ra] = 1;
-$a0 = 2.0;
+$t1 = $a0 - 1;
+$a0 = $t1;
 $sp = $sp + 1;
 $s1[$sp] = $a0;
-$a1 = 6.0;
-$sp = $sp + 1;
-$s1[$sp] = $a1;
-goto potencia;
+goto fact;
 ra1:
+$sp = $sp - 1;
 $a0 = $s1[$sp];
-$a1 = $s1[$sp];
-$t1 = 64 == $v0;
-if(!$t1) goto if1F;
-print('---> Done.');
-print("\n");
-goto if1end;
-if1F:
-print('---> RIP.');
-print("\n");
-if1end:
-print('Analizando MCD');
-print("\n");
-$ra = $ra + 1;
-$s0[$ra] = 2;
-$a0 = 25;
-$sp = $sp + 1;
-$s1[$sp] = $a0;
-$a1 = 75;
-$sp = $sp + 1;
-$s1[$sp] = $a1;
-goto mcd;
-ra2:
-$a0 = $s1[$sp];
-$a1 = $s1[$sp];
-$t2 = 25 == $v0;
-if(!$t2) goto if2F;
-print('---> Done.');
-print("\n");
-goto if2end;
-if2F:
-print('---> RIP.');
-print("\n");
-if2end:
-print('Ejecutando Hofstadter masculino');
-print("\n");
-$ra = $ra + 1;
-$s0[$ra] = 3;
-$a0 = 15;
-$sp = $sp + 1;
-$s1[$sp] = $a0;
-goto hofstaderMasculino;
-ra3:
-$a0 = $s1[$sp];
-$t3 = 8 == $v0;
-if(!$t3) goto if3F;
-print('---> Done.');
-print("\n");
-goto if3end;
-if3F:
-print('---> RIP.');
-print("\n");
-if3end:
-print('Ejecutando Hofstadter femenino');
-print("\n");
-$ra = $ra + 1;
-$s0[$ra] = 4;
-$a0 = 15;
-$sp = $sp + 1;
-$s1[$sp] = $a0;
-goto hofstaderFemenina;
-ra4:
-$a0 = $s1[$sp];
-$t4 = 7 == $v0;
-if(!$t4) goto if4F;
-print('---> Done.');
-print("\n");
-goto if4end;
-if4F:
-print('---> RIP.');
-print("\n");
-if4end:
-exit;
-factorial:
-if($a0 != 0) goto switch50;
+$t2 = $a0 * $v0;
+$v0 = $t2;
+goto saltos;
+if0F:
+if0end:
 $v0 = 1;
-goto saltos;
-switch50:
-$ra = $ra + 1;
-$s0[$ra] = 5;
-$t5 = $a0 - 1;
-$a0 = $t5;
-$sp = $sp + 1;
-$s1[$sp] = $a0;
-goto factorial;
-ra5:
-$sp = $sp - 1;
-$a0 = $s1[$sp];
-$t6 = $a0 * $v0;
-$v0 = $t6;
-goto saltos;
-switch5Fin:
-goto saltos;
-potencia:
-$t8 = $a1 == 0;
-if(!$t8) goto if6F;
-$v0 = 1;
-goto saltos;
-if6F:
-if6end:
-$ra = $ra + 1;
-$s0[$ra] = 6;
-$a0 = $a0;
-$sp = $sp + 1;
-$s1[$sp] = $a0;
-$t9 = $a1 - 1;
-$a1 = $t9;
-$sp = $sp + 1;
-$s1[$sp] = $a1;
-goto potencia;
-ra6:
-$sp = $sp - 1;
-$a0 = $s1[$sp];
-$sp = $sp - 1;
-$a1 = $s1[$sp];
-$t10 = $a0 * $v0;
-$v0 = $t10;
-goto saltos;
-mcd:
-$t12 = $a1 != 0;
-if(!$t12) goto if7F;
-$t13 = $a0 % $a1;
-$ra = $ra + 1;
-$s0[$ra] = 7;
-$a0 = $a1;
-$sp = $sp + 1;
-$s1[$sp] = $a0;
-$a1 = $t13;
-$sp = $sp + 1;
-$s1[$sp] = $a1;
-goto mcd;
-ra7:
-$sp = $sp - 1;
-$a0 = $s1[$sp];
-$sp = $sp - 1;
-$a1 = $s1[$sp];
-$v0 = $v0;
-goto saltos;
-if7F:
-$v0 = $a0;
-goto saltos;
-if7end:
-goto saltos;
-hofstaderFemenina:
-$t14 = $a0 < 0;
-if(!$t14) goto if8F;
-$v0 = 0;
-goto saltos;
-if8F:
-$t15 = $a0 != 0;
-if(!$t15) goto if9F;
-$ra = $ra + 1;
-$s0[$ra] = 8;
-$t16 = $a0 - 1;
-$a0 = $t16;
-$sp = $sp + 1;
-$s1[$sp] = $a0;
-goto hofstaderFemenina;
-ra8:
-$sp = $sp - 1;
-$a0 = $s1[$sp];
-$t17 = $a0 - $v0;
-$v0 = $t17;
-goto saltos;
-if9F:
-$v0 = 1;
-goto saltos;
-if9end:
-if8end:
-goto saltos;
-hofstaderMasculino:
-$t19 = $a0 < 0;
-if(!$t19) goto if10F;
-$v0 = 0;
-goto saltos;
-if10F:
-$t20 = $a0 != 0;
-if(!$t20) goto if11F;
-$ra = $ra + 1;
-$s0[$ra] = 9;
-$t21 = $a0 - 1;
-$a0 = $t21;
-$sp = $sp + 1;
-$s1[$sp] = $a0;
-goto hofstaderMasculino;
-ra9:
-$sp = $sp - 1;
-$a0 = $s1[$sp];
-$t22 = $a0 - $v0;
-$v0 = $t22;
-goto saltos;
-if11F:
-$v0 = 0;
-goto saltos;
-if11end:
-if10end:
 saltos:
-if($s0[$ra] == 9) goto pop;
-if($s0[$ra] == 8) goto pop;
-if($s0[$ra] == 7) goto pop;
-if($s0[$ra] == 6) goto pop;
-if($s0[$ra] == 5) goto pop;
-if($s0[$ra] == 4) goto pop;
-if($s0[$ra] == 3) goto pop;
-if($s0[$ra] == 2) goto pop;
 if($s0[$ra] == 1) goto pop;
 if($s0[$ra] == 0) goto pop;
 pop:
 $s2 = $s0[$ra];
 $ra = $ra - 1;
-if($s2 == 9) goto ra9;
-if($s2 == 8) goto ra8;
-if($s2 == 7) goto ra7;
-if($s2 == 6) goto ra6;
-if($s2 == 5) goto ra5;
-if($s2 == 4) goto ra4;
-if($s2 == 3) goto ra3;
-if($s2 == 2) goto ra2;
 if($s2 == 1) goto ra1;
 if($s2 == 0) goto ra0;

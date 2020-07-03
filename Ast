@@ -14,110 +14,70 @@ digraph AST {
 	"1ph3" -> "2p"
 	"2ph1" [label=ListaValores]
 	"2p" -> "2ph1"
-	"3p" [label="Ejecutando potencia"]
+	"3p" [label="%d"]
 	"2ph1" -> "3p"
-	"4p" [label=If]
-	"1ph3" -> "4p"
-	"4ph1" [label=condicion]
-	"4ph2" [label=instrucciones]
-	"4ph3" [label=listaelse]
-	"4p" -> "4ph1"
-	"4p" -> "4ph2"
-	"4p" -> "4ph3"
-	"6p" [label=Llamada]
-	"5p3" -> "6p"
-	"6p1" [label=potencia]
-	"6p2" [label=ListaParamtros]
-	"6p" -> "6p1"
-	"6p" -> "6p2"
-	"5p1" [label=64]
-	"5p3" [label="$v0"]
-	"4ph1" -> "5p1"
-	"4ph1" -> "5p2"
-	"4ph1" -> "5p3"
-	"5p2" [label="=="]
-	"7p" [label=Printf]
-	"4ph2" -> "7p"
-	"7ph1" [label=ListaValores]
+	"4p" [label=Llamada]
+	"2ph1" -> "4p"
+	"4p1" [label=fact]
+	"4p2" [label=ListaParamtros]
+	"4p" -> "4p1"
+	"4p" -> "4p2"
+	"5p" [label=Funcion]
+	instrucciones -> "5p"
+	"5ph1" [label=int]
+	"5ph2" [label=fact]
+	"5ph3" [label=parametros]
+	"5ph4" [label=instrucciones]
+	"5p" -> "5ph1"
+	"5p" -> "5ph2"
+	"5p" -> "5ph3"
+	"5p" -> "5ph4"
+	"6param" [label=a]
+	"5ph3" -> "6param"
+	"7p" [label=If]
+	"5ph4" -> "7p"
+	"7ph1" [label=condicion]
+	"7ph2" [label=instrucciones]
+	"7ph3" [label=listaelse]
 	"7p" -> "7ph1"
-	"8p" [label="---> Done."]
-	"7ph1" -> "8p"
-	"4pelse" [label=Else]
-	"4ph3" -> "4pelse"
-	"9p" [label=Printf]
-	"4pelse" -> "9p"
-	"9ph1" [label=ListaValores]
-	"9p" -> "9ph1"
-	"10p" [label="---> RIP."]
-	"9ph1" -> "10p"
-	"11p" [label=Funcion]
-	instrucciones -> "11p"
-	"11ph1" [label=double]
-	"11ph2" [label=potencia]
-	"11ph3" [label=parametros]
-	"11ph4" [label=instrucciones]
-	"11p" -> "11ph1"
-	"11p" -> "11ph2"
-	"11p" -> "11ph3"
-	"11p" -> "11ph4"
-	"12param" [label=base]
-	"11ph3" -> "12param"
-	"13param" [label=exp]
-	"11ph3" -> "13param"
-	"14p" [label=If]
-	"11ph4" -> "14p"
-	"14ph1" [label=condicion]
-	"14ph2" [label=instrucciones]
-	"14ph3" [label=listaelse]
-	"14p" -> "14ph1"
-	"14p" -> "14ph2"
-	"14p" -> "14ph3"
-	"16p" [label=exp]
-	"15p1" -> "16p"
-	"15p1" [label="$a1"]
-	"15p3" [label=0]
-	"14ph1" -> "15p1"
-	"14ph1" -> "15p2"
-	"14ph1" -> "15p3"
-	"15p2" [label="=="]
-	"17p" [label=Return]
-	"14ph2" -> "17p"
-	"17ph1" [label=Expresion]
-	"17p" -> "17ph1"
-	"18p" [label=Return]
-	"11ph4" -> "18p"
-	"18ph1" [label=Expresion]
-	"18p" -> "18ph1"
-	"20p" [label=base]
-	"19p1" -> "20p"
-	"21p" [label=Llamada]
-	"19p3" -> "21p"
-	"21p1" [label=potencia]
-	"21p2" [label=ListaParamtros]
-	"21p" -> "21p1"
-	"21p" -> "21p2"
-	"22p" [label=base]
-	"21p2" -> "22p"
-	"24p" [label=exp]
-	"23p1" -> "24p"
-	"23p1" [label="$a1"]
-	"23p3" [label=1]
-	"21p2" -> "23p1"
-	"21p2" -> "23p2"
-	"21p2" -> "23p3"
-	"23p2" [label="-"]
-	"19p1" [label="$a0"]
-	"19p3" [label="$v0"]
-	"18ph1" -> "19p1"
-	"18ph1" -> "19p2"
-	"18ph1" -> "19p3"
-	"19p2" [label="*"]
-	"25p" [label=Return]
-	"11ph4" -> "25p"
-	"25ph1" [label=Expresion]
-	"25p" -> "25ph1"
-	"26p1" [label="-"]
-	"26p2" [label=100]
-	"25ph1" -> "26p1"
-	"25ph1" -> "26p2"
+	"7p" -> "7ph2"
+	"7p" -> "7ph3"
+	"9p" [label=a]
+	"8p1" -> "9p"
+	"8p1" [label="$a0"]
+	"8p3" [label=1]
+	"7ph1" -> "8p1"
+	"7ph1" -> "8p2"
+	"7ph1" -> "8p3"
+	"8p2" [label=">"]
+	"10p" [label=Return]
+	"7ph2" -> "10p"
+	"10ph1" [label=Expresion]
+	"10p" -> "10ph1"
+	"12p" [label=a]
+	"11p1" -> "12p"
+	"13p" [label=Llamada]
+	"11p3" -> "13p"
+	"13p1" [label=fact]
+	"13p2" [label=ListaParamtros]
+	"13p" -> "13p1"
+	"13p" -> "13p2"
+	"15p" [label=a]
+	"14p1" -> "15p"
+	"14p1" [label="$a0"]
+	"14p3" [label=1]
+	"13p2" -> "14p1"
+	"13p2" -> "14p2"
+	"13p2" -> "14p3"
+	"14p2" [label="-"]
+	"11p1" [label="$a0"]
+	"11p3" [label="$v0"]
+	"10ph1" -> "11p1"
+	"10ph1" -> "11p2"
+	"10ph1" -> "11p3"
+	"11p2" [label="*"]
+	"16p" [label=Return]
+	"5ph4" -> "16p"
+	"16ph1" [label=Expresion]
+	"16p" -> "16ph1"
 }
