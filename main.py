@@ -399,8 +399,7 @@ class Editor:
 
     #METODO PARA INTERPRETAR LAS INSTRUCCIONES
     def Interpretar(self, instrucciones, tabla):
-        #try:
-
+        try:
             self.stack.append('global')
             self.concatenar('main:')
             self.listaAugus.append(('etiqueta','main:'))
@@ -454,8 +453,8 @@ class Editor:
                     self.concatenar('if($s2 == '+str(self.returns[r]) + ') goto ra'+str(self.returns[r])+';')
                     self.listaAugus.append(('if','if(','$s2',' == ',str(self.returns[r]),') goto ','ra'+str(self.returns[r]),';'))
                                 
-        #except:
-        #    messagebox.showerror('ERROR','NO SE INTERPRETO')
+        except:
+            messagebox.showerror('ERROR','NO SE INTERPRETO')
 
     #METODO PARA INTERPRETAR INSTRUCCIONES INTERNAS
     def InterpretarIns(self, lista, tabla, nombre, padre = None):
