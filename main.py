@@ -240,6 +240,7 @@ class Editor:
     lineasantes = -1
     lineasdespues = 0
     totallineas = 0
+    optimizar = True
 
     #CONSTRUCTOR
     def __init__(self,principal):
@@ -347,6 +348,10 @@ class Editor:
         self.i += 1
         return self.i
 
+    def noOptimizar(self):
+        self.optimizar = False
+        self.AnalisisAsc()
+
     #METODO PARA HACER EL ANALISIS ASCENDENTE
     def AnalisisAsc(self):
         self.reset()
@@ -362,7 +367,7 @@ class Editor:
         self.Interpretar(self.instrucciones, self.tablaGlobal)
         self.ReporteTablaSimbolos()
         self.ReporteErrores()
-        self.totallineas = len(self.listaAugus)
+        self.totallineas += len(self.listaAugus)
         while(self.lineasantes != self.lineasdespues):
             self.lineasantes = len(self.listaAugus)
             self.OptimizarCodigo()
@@ -387,8 +392,6 @@ class Editor:
         except:
             print("Error al escribir en el archivo")
         self.EjecutarAugus(self.resultado)
-        #self.consola.insert(gui.END,self.resultado)
-        
         if(len(self.tablaErrores.errores) != 0):
             self.VerReporteErrores()
 
@@ -716,7 +719,6 @@ class Editor:
             self.InterpretarAsignacion(inicio,tabla,tree + 'h1')
         self.concatenar(nombre + ':')
         self.listaAugus.append(('etiqueta',nombre + ':'))
-        print(condicion)
         resultado = self.InterpretarOperacion(condicion, tabla, tree + 'h2')
         cond = resultado[1]
         self.concatenar('if(' + cond + ')' + ' goto ' + verdadero + ';')
@@ -778,7 +780,7 @@ class Editor:
         self.listaAugus.append(('etiqueta',falso + ':'))
 
         self.addOpti(1,"Negando la concidion del if se elimina un salto innecesario.",ciclo.linea,3)
-        
+        self.totallineas += 2        
         if(listaelse is not None):
              for x in listaelse:
                  if(type(x) is tuple):
@@ -797,7 +799,7 @@ class Editor:
                      resultadox = self.InterpretarOperacion(condicionx, tabla, newname)
                      condx = resultadox[1]
                      self.concatenar('if(!' + condx + ') goto ' + falsox + ';')
-                     self.listaAugus.append(('if','if(!',cond,') goto ', falsox,';'))
+                     self.listaAugus.append(('if','if(!',condx,') goto ', falsox,';'))
                      self.InterpretarIns(listax, tabla, nombre, newname)
                      self.concatenar('goto ' + fin + ';')
                      self.listaAugus.append(('salto','goto ',fin,';'))
@@ -2520,7 +2522,8 @@ class Editor:
         tshtml += '<h3>Numero de bloques:  '+str(self.numbloques)+'</h3>'
         tshtml += '<h3>Numero de lineas antes de optimizar:  '+str(self.totallineas)+'</h3>'
         tshtml += '<h3>Numero de lineas despues de optimizar:  '+str(self.lineasdespues)+'</h3>'
-        tshtml += '<h3>Lineas ahorradas:  '+str(self.totallineas - self.lineasdespues)+'</h3>'
+        if(self.lineasdespues != 0):
+            tshtml += '<h3>Lineas ahorradas:  '+str(self.totallineas - self.lineasdespues)+'</h3>'
         tshtml += '''<table id="t01">
         <tr>
         <th>Id</th>
@@ -2698,8 +2701,12 @@ class Editor:
                     eliminar.append(numsig)
                     self.addOpti(2,"Codigo muerto: El codigo despues de un salto incondicional nunca se ejecuta",'A'+str(numsig),20)
                 else:
-                    pass
-                    #print(siguiente)
+                    n = tupla[2]
+                    ntag = siguiente[1].replace(":",'')
+                    if(n == ntag):
+                        eliminar.append(x)
+                        self.addOpti(1,"Codigo inalcanzable: La etiqueta del salto esta justo despues",'A'+str(x),2)
+
         while eliminar:
             num = eliminar[0]
             self.listaAugus[num] = ()
@@ -2797,9 +2804,9 @@ class Editor:
         self.dot = None
         self.listaAugus.clear()
         self.numbloques = 1
-        lineasantes = -1
-        lineasdespues = 0
-        totallineas = 0
+        self.lineasantes = -1
+        self.lineasdespues = 0
+        self.totallineas = 0
         try:
             f = open('ReporteGr.html', "w")
             f.write('')

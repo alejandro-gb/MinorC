@@ -230,7 +230,6 @@ $v0 = 0;
 goto saltos;
 if11end:
 if10end:
-goto saltos;
 saltos:
 if($s0[$ra] == 9) goto pop;
 if($s0[$ra] == 8) goto pop;
